@@ -1,0 +1,1001 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import {
+  BadgeCheck,
+  CalendarDays,
+  Car,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  Clock,
+  Dog,
+  Droplets,
+  Loader2,
+  Mail,
+  MessageSquare,
+  Phone,
+  Search,
+  Shield,
+  Sparkles,
+  SprayCan,
+  User,
+  WandSparkles
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import { clsx } from "clsx";
+import type {
+  AvailableSlot,
+  BookingRecord,
+  ExtraId,
+  ServicePackageId,
+  VehicleRegistrationInfo,
+  VehicleTypeId
+} from "@/lib/booking-types";
+import {
+  bookingExtras,
+  calculateBookingPrice,
+  formatCurrency,
+  servicePackages,
+  vehicleTypes
+} from "@/lib/pricing";
+
+const steps: { label: string; icon: LucideIcon }[] = [
+  { label: "Paket", icon: Sparkles },
+  { label: "Fordon", icon: Car },
+  { label: "Tillval", icon: WandSparkles },
+  { label: "Kontakt", icon: User },
+  { label: "Tid", icon: CalendarDays },
+  { label: "Granska", icon: BadgeCheck }
+] as const;
+
+const serviceIcons: Record<ServicePackageId, LucideIcon> = {
+  "exterior-wash": Droplets,
+  "interior-cleaning": SprayCan,
+  "complete-detail": Sparkles,
+  polishing: WandSparkles,
+  "paint-protection": Shield
+};
+
+const vehicleIcons: Record<VehicleTypeId, LucideIcon> = {
+  sedan: Car,
+  kombi: Car,
+  suv: Car,
+  "7-sits": Car
+};
+
+const extraIcons: Record<ExtraId, LucideIcon> = {
+  "dog-hair": Dog,
+  "dirty-interior": SprayCan
+};
+
+type BookingFormProps = {
+  availableSlots: AvailableSlot[];
+  initialServiceId?: ServicePackageId;
+};
+
+type CustomerState = {
+  name: string;
+  email: string;
+  phone: string;
+  licensePlate: string;
+  vehicleInfo?: VehicleRegistrationInfo;
+  message: string;
+};
+
+type VehicleLookupResponse =
+  | {
+      ok: true;
+      vehicle: VehicleRegistrationInfo;
+    }
+  | {
+      ok: false;
+      error: string;
+    };
+
+type BookingResponse =
+  | {
+      ok: true;
+      booking: Pick<BookingRecord, "id" | "date" | "time" | "price">;
+    }
+  | {
+      ok: false;
+      error: string;
+    };
+
+export function BookingForm({
+  availableSlots,
+  initialServiceId
+}: BookingFormProps) {
+  const [step, setStep] = useState(0);
+  const [serviceId, setServiceId] = useState<ServicePackageId | "">(
+    initialServiceId ?? ""
+  );
+  const [vehicleTypeId, setVehicleTypeId] = useState<VehicleTypeId | "">("");
+  const [extras, setExtras] = useState<ExtraId[]>([]);
+  const [pickupDropoff, setPickupDropoff] = useState(false);
+  const [customer, setCustomer] = useState<CustomerState>({
+    name: "",
+    email: "",
+    phone: "",
+    licensePlate: "",
+    message: ""
+  });
+  const [selectedSlotId, setSelectedSlotId] = useState("");
+  const [formError, setFormError] = useState("");
+  const [vehicleLookupError, setVehicleLookupError] = useState("");
+  const [isLookingUpVehicle, setIsLookingUpVehicle] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [confirmation, setConfirmation] = useState<BookingResponse | null>(
+    null
+  );
+
+  const selectedSlot = availableSlots.find((slot) => slot.id === selectedSlotId);
+
+  const priceSummary = useMemo(() => {
+    if (!serviceId || !vehicleTypeId) {
+      return null;
+    }
+
+    return calculateBookingPrice({
+      serviceId,
+      vehicleTypeId,
+      extras
+    });
+  }, [extras, serviceId, vehicleTypeId]);
+
+  function updateCustomer(field: keyof CustomerState, value: string) {
+    setCustomer((current) => ({
+      ...current,
+      [field]: value,
+      ...(field === "licensePlate" ? { vehicleInfo: undefined } : {})
+    }));
+
+    if (field === "licensePlate") {
+      setVehicleLookupError("");
+    }
+  }
+
+  function toggleExtra(extraId: ExtraId) {
+    setExtras((current) =>
+      current.includes(extraId)
+        ? current.filter((id) => id !== extraId)
+        : [...current, extraId]
+    );
+  }
+
+  function validateStep(currentStep: number) {
+    if (currentStep === 0 && !serviceId) {
+      return "Välj ett servicepaket för att gå vidare.";
+    }
+
+    if (currentStep === 1 && !vehicleTypeId) {
+      return "Välj fordonstyp för att kunna räkna ut priset.";
+    }
+
+    if (currentStep === 3) {
+      if (customer.name.trim().length < 2) {
+        return "Ange namn.";
+      }
+      if (!customer.email.includes("@")) {
+        return "Ange en giltig e-postadress.";
+      }
+      if (customer.phone.trim().length < 6) {
+        return "Ange telefonnummer.";
+      }
+      if (customer.licensePlate.trim().length < 2) {
+        return "Registreringsnummer krävs.";
+      }
+    }
+
+    if (currentStep === 4 && !selectedSlot) {
+      return "Välj en ledig tid.";
+    }
+
+    return "";
+  }
+
+  async function lookupVehicle() {
+    const plate = customer.licensePlate.trim();
+
+    if (plate.length < 2) {
+      setVehicleLookupError("Skriv registreringsnummer först.");
+      return;
+    }
+
+    setIsLookingUpVehicle(true);
+    setVehicleLookupError("");
+
+    try {
+      const response = await fetch(
+        `/api/vehicle-lookup?plate=${encodeURIComponent(plate)}`
+      );
+      const result = (await response.json()) as VehicleLookupResponse;
+
+      if (!response.ok || !result.ok) {
+        throw new Error(result.ok ? "Kunde inte hämta fordonsinfo." : result.error);
+      }
+
+      setCustomer((current) => ({
+        ...current,
+        licensePlate: result.vehicle.licensePlate,
+        vehicleInfo: result.vehicle
+      }));
+      setVehicleTypeId(result.vehicle.suggestedVehicleTypeId);
+    } catch (lookupError) {
+      setVehicleLookupError(
+        lookupError instanceof Error
+          ? lookupError.message
+          : "Kunde inte hämta fordonsinfo just nu."
+      );
+    } finally {
+      setIsLookingUpVehicle(false);
+    }
+  }
+
+  function goNext() {
+    const error = validateStep(step);
+
+    if (error) {
+      setFormError(error);
+      return;
+    }
+
+    setFormError("");
+    setStep((current) => Math.min(current + 1, steps.length - 1));
+  }
+
+  function goBack() {
+    setFormError("");
+    setStep((current) => Math.max(current - 1, 0));
+  }
+
+  async function submitBooking() {
+    const error = validateStep(4);
+
+    if (error || !serviceId || !vehicleTypeId || !selectedSlot || !priceSummary) {
+      setFormError(error || "Kontrollera bokningen innan du skickar.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    setFormError("");
+    setConfirmation(null);
+
+    try {
+      const response = await fetch("/api/bookings", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          serviceId,
+          vehicleTypeId,
+          extras,
+          pickupDropoff,
+          customer,
+          date: selectedSlot.date,
+          time: selectedSlot.time
+        })
+      });
+
+      const result = (await response.json()) as BookingResponse;
+
+      if (!response.ok || !result.ok) {
+        throw new Error(result.ok ? "Bokningen kunde inte skickas." : result.error);
+      }
+
+      setConfirmation(result);
+      setStep(steps.length - 1);
+    } catch (bookingError) {
+      setFormError(
+        bookingError instanceof Error
+          ? bookingError.message
+          : "Något gick fel. Försök igen."
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  if (confirmation?.ok) {
+    return (
+      <div className="surface p-6 sm:p-8">
+        <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-md bg-forest-600 text-white">
+          <Check size={24} />
+        </div>
+        <p className="eyebrow mb-3">Bokning mottagen</p>
+        <h2 className="text-3xl font-black text-forest-950">
+          Tack! Din bokningsförfrågan är bekräftad.
+        </h2>
+        <p className="mt-4 leading-7 text-slate-600">
+          Vi har tagit emot bokning {confirmation.booking.id}. En bekräftelse
+          visas här och mockade e-postfunktioner har körts i backend.
+        </p>
+        <div className="mt-6 grid gap-3 rounded-md bg-forest-50 p-4 text-sm font-semibold text-forest-950 sm:grid-cols-3">
+          <span>Datum: {confirmation.booking.date}</span>
+          <span>Tid: {confirmation.booking.time}</span>
+          <span>Pris: {formatCurrency(confirmation.booking.price.total)}</span>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="surface overflow-hidden">
+      <div className="border-b border-forest-100 bg-white p-4 sm:p-6">
+        <div className="flex flex-wrap gap-2">
+          {steps.map((item, index) => {
+            const Icon = item.icon;
+
+            return (
+              <button
+                key={item.label}
+                type="button"
+                onClick={() => {
+                  if (index <= step) {
+                    setStep(index);
+                    setFormError("");
+                  }
+                }}
+                className={clsx(
+                  "inline-flex items-center gap-2 rounded-md px-3 py-2 text-xs font-black transition",
+                  index === step
+                    ? "bg-forest-950 text-white"
+                    : index < step
+                      ? "bg-forest-100 text-forest-800"
+                      : "bg-slate-100 text-slate-500"
+                )}
+              >
+                <Icon size={15} />
+                <span>
+                  {index + 1}. {item.label}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="grid gap-8 p-4 sm:p-6 lg:grid-cols-[1fr_20rem]">
+        <div>
+          {step === 0 ? (
+            <StepShell
+              title="Välj servicepaket"
+              description="Börja med behandlingen som passar bilen bäst. Priset uppdateras när fordonstyp och tillval är valda."
+            >
+              <div className="grid gap-3">
+                {servicePackages.map((service) => (
+                  <ChoiceButton
+                    key={service.id}
+                    active={serviceId === service.id}
+                    onClick={() => setServiceId(service.id)}
+                    title={service.name}
+                    meta={`Från ${formatCurrency(service.basePrice)} · ${service.duration}`}
+                    description={service.description}
+                    icon={serviceIcons[service.id]}
+                  />
+                ))}
+              </div>
+            </StepShell>
+          ) : null}
+
+          {step === 1 ? (
+            <StepShell
+              title="Välj fordonstyp"
+              description="Större bilar tar längre tid och får ett tydligt fordonstillägg."
+            >
+              <div className="grid gap-3 sm:grid-cols-2">
+                {vehicleTypes.map((vehicleType) => (
+                  <ChoiceButton
+                    key={vehicleType.id}
+                    active={vehicleTypeId === vehicleType.id}
+                    onClick={() => setVehicleTypeId(vehicleType.id)}
+                    title={vehicleType.name}
+                    meta={`+${formatCurrency(vehicleType.adjustment)}`}
+                    icon={vehicleIcons[vehicleType.id]}
+                  />
+                ))}
+              </div>
+              {customer.vehicleInfo ? (
+                <VehicleInfoCard vehicle={customer.vehicleInfo} className="mt-5" />
+              ) : (
+                <div className="mt-5 rounded-md border border-forest-100 bg-forest-50 p-4 text-sm leading-6 text-forest-800">
+                  Tips: skriv registreringsnummer i nästa steg så kan fordonstyp
+                  fyllas i automatiskt.
+                </div>
+              )}
+            </StepShell>
+          ) : null}
+
+          {step === 2 ? (
+            <StepShell
+              title="Lägg till tillval"
+              description="Tillval är frivilliga. Upphämtning och lämning är en förfrågan och räknas inte in i priset ännu."
+            >
+              <div className="grid gap-3">
+                {bookingExtras.map((extra) => {
+                  const Icon = extraIcons[extra.id];
+
+                  return (
+                    <label
+                      key={extra.id}
+                      className={clsx(
+                        "flex cursor-pointer gap-3 rounded-md border p-4 transition",
+                        extras.includes(extra.id)
+                          ? "border-forest-600 bg-forest-50"
+                          : "border-forest-100 bg-white hover:border-forest-300"
+                      )}
+                    >
+                      <input
+                        type="checkbox"
+                        className="mt-1 h-4 w-4 accent-forest-700"
+                        checked={extras.includes(extra.id)}
+                        onChange={() => toggleExtra(extra.id)}
+                      />
+                      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-white text-forest-700">
+                        <Icon size={21} />
+                      </span>
+                      <span>
+                        <span className="block font-black text-forest-950">
+                          {extra.name} · +{formatCurrency(extra.price)}
+                        </span>
+                        <span className="mt-1 block text-sm leading-6 text-slate-600">
+                          {extra.description}
+                        </span>
+                      </span>
+                    </label>
+                  );
+                })}
+
+                <label
+                  className={clsx(
+                    "flex cursor-pointer gap-3 rounded-md border p-4 transition",
+                    pickupDropoff
+                      ? "border-forest-600 bg-forest-50"
+                      : "border-forest-100 bg-white hover:border-forest-300"
+                  )}
+                >
+                  <input
+                    type="checkbox"
+                    className="mt-1 h-4 w-4 accent-forest-700"
+                    checked={pickupDropoff}
+                    onChange={() => setPickupDropoff((value) => !value)}
+                  />
+                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-white text-forest-700">
+                    <Car size={21} />
+                  </span>
+                  <span>
+                    <span className="block font-black text-forest-950">
+                      Förfrågan om upphämtning/lämning
+                    </span>
+                    <span className="mt-1 block text-sm leading-6 text-slate-600">
+                      Pris och tillgänglighet bekräftas separat av oss.
+                    </span>
+                  </span>
+                </label>
+              </div>
+            </StepShell>
+          ) : null}
+
+          {step === 3 ? (
+            <StepShell
+              title="Dina uppgifter"
+              description="Registreringsnummer är obligatoriskt så att vi kan matcha bilen med bokningen."
+            >
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field label="Namn">
+                  <InputWithIcon icon={User}>
+                    <input
+                      aria-label="Namn"
+                      className="field-input pl-10"
+                      value={customer.name}
+                      onChange={(event) =>
+                        updateCustomer("name", event.target.value)
+                      }
+                      autoComplete="name"
+                      required
+                    />
+                  </InputWithIcon>
+                </Field>
+                <Field label="E-post">
+                  <InputWithIcon icon={Mail}>
+                    <input
+                      aria-label="E-post"
+                      className="field-input pl-10"
+                      type="email"
+                      value={customer.email}
+                      onChange={(event) =>
+                        updateCustomer("email", event.target.value)
+                      }
+                      autoComplete="email"
+                      required
+                    />
+                  </InputWithIcon>
+                </Field>
+                <Field label="Telefon">
+                  <InputWithIcon icon={Phone}>
+                    <input
+                      aria-label="Telefon"
+                      className="field-input pl-10"
+                      type="tel"
+                      value={customer.phone}
+                      onChange={(event) =>
+                        updateCustomer("phone", event.target.value)
+                      }
+                      autoComplete="tel"
+                      required
+                    />
+                  </InputWithIcon>
+                </Field>
+                <Field label="Registreringsnummer">
+                  <div className="flex gap-2">
+                    <InputWithIcon icon={Car} className="min-w-0 flex-1">
+                      <input
+                        aria-label="Registreringsnummer"
+                        className="field-input uppercase pl-10"
+                        value={customer.licensePlate}
+                        onChange={(event) =>
+                          updateCustomer("licensePlate", event.target.value)
+                        }
+                        placeholder="ABC123"
+                        required
+                      />
+                    </InputWithIcon>
+                    <button
+                      type="button"
+                      onClick={lookupVehicle}
+                      disabled={isLookingUpVehicle}
+                      className="inline-flex h-[46px] shrink-0 items-center justify-center rounded-md bg-forest-950 px-4 text-sm font-black text-white transition hover:bg-forest-800 disabled:cursor-wait disabled:opacity-70"
+                    >
+                      {isLookingUpVehicle ? (
+                        <Loader2 size={18} className="animate-spin" />
+                      ) : (
+                        <Search size={18} />
+                      )}
+                      <span className="ml-2 hidden sm:inline">Hämta</span>
+                      <span className="sr-only">fordonsinfo</span>
+                    </button>
+                  </div>
+                </Field>
+                {customer.vehicleInfo ? (
+                  <VehicleInfoCard
+                    vehicle={customer.vehicleInfo}
+                    className="sm:col-span-2"
+                  />
+                ) : null}
+                {vehicleLookupError ? (
+                  <p className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800 sm:col-span-2">
+                    {vehicleLookupError}
+                  </p>
+                ) : null}
+                <Field label="Meddelande" className="sm:col-span-2">
+                  <InputWithIcon icon={MessageSquare} alignTop>
+                    <textarea
+                      aria-label="Meddelande"
+                      className="field-input min-h-32 resize-y pl-10"
+                      value={customer.message}
+                      onChange={(event) =>
+                        updateCustomer("message", event.target.value)
+                      }
+                      placeholder="Berätta gärna om särskilda önskemål, fläckar eller tider som passar extra bra."
+                    />
+                  </InputWithIcon>
+                </Field>
+              </div>
+            </StepShell>
+          ) : null}
+
+          {step === 4 ? (
+            <StepShell
+              title="Välj datum och tid"
+              description="Lediga tider kommer just nu från mockdata. Kalenderhjälpen är förberedd för Google Calendar free/busy."
+            >
+              <div className="grid gap-3 sm:grid-cols-2">
+                {availableSlots.map((slot) => (
+                  <button
+                    key={slot.id}
+                    type="button"
+                    onClick={() => setSelectedSlotId(slot.id)}
+                    className={clsx(
+                      "rounded-md border p-4 text-left transition",
+                      selectedSlotId === slot.id
+                        ? "border-forest-600 bg-forest-50"
+                        : "border-forest-100 bg-white hover:border-forest-300"
+                    )}
+                  >
+                    <span className="mb-3 flex h-10 w-10 items-center justify-center rounded-md bg-forest-50 text-forest-700">
+                      <Clock size={20} />
+                    </span>
+                    <span className="block font-black text-forest-950">
+                      {slot.date}
+                    </span>
+                    <span className="mt-1 block text-sm font-semibold text-forest-700">
+                      Kl. {slot.time}
+                    </span>
+                    <span className="mt-2 block text-xs font-bold uppercase tracking-[0.12em] text-slate-500">
+                      Ledig tid
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </StepShell>
+          ) : null}
+
+          {step === 5 ? (
+            <StepShell
+              title="Granska och bekräfta"
+              description="Kontrollera detaljerna innan du skickar bokningen. Priset räknas även om i backend."
+            >
+              <ReviewDetails
+                serviceId={serviceId}
+                vehicleTypeId={vehicleTypeId}
+                extras={extras}
+                pickupDropoff={pickupDropoff}
+                customer={customer}
+                selectedSlot={selectedSlot}
+                priceSummary={priceSummary}
+                vehicleInfo={customer.vehicleInfo}
+              />
+            </StepShell>
+          ) : null}
+
+          {formError ? (
+            <p className="mt-5 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+              {formError}
+            </p>
+          ) : null}
+
+          <div className="mt-7 flex flex-col-reverse gap-3 sm:flex-row sm:justify-between">
+            <button
+              type="button"
+              onClick={goBack}
+              disabled={step === 0 || isSubmitting}
+              className="button-secondary disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <ChevronLeft size={16} />
+              Tillbaka
+            </button>
+
+            {step < steps.length - 1 ? (
+              <button type="button" onClick={goNext} className="button-primary">
+                Nästa
+                <ChevronRight size={16} />
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={submitBooking}
+                disabled={isSubmitting}
+                className="button-primary disabled:cursor-wait disabled:opacity-70"
+              >
+                {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : null}
+                Bekräfta bokning
+              </button>
+            )}
+          </div>
+        </div>
+
+        <aside className="h-fit rounded-lg border border-forest-100 bg-forest-50 p-5">
+          <p className="text-sm font-black uppercase tracking-[0.14em] text-forest-700">
+            Prisöversikt
+          </p>
+          {priceSummary ? (
+            <div className="mt-4 grid gap-3">
+              {customer.vehicleInfo ? (
+                <div className="rounded-md bg-white p-3">
+                  <p className="text-xs font-bold uppercase tracking-[0.12em] text-forest-600">
+                    Hämtad bil
+                  </p>
+                  <p className="mt-1 font-black text-forest-950">
+                    {customer.vehicleInfo.make} {customer.vehicleInfo.model}
+                  </p>
+                  <p className="text-xs font-semibold text-slate-500">
+                    {customer.vehicleInfo.licensePlate} ·{" "}
+                    {customer.vehicleInfo.year}
+                  </p>
+                </div>
+              ) : null}
+              {priceSummary.lines.map((line) => (
+                <div
+                  key={`${line.type}-${line.label}`}
+                  className="flex items-center justify-between gap-3 text-sm"
+                >
+                  <span className="text-slate-700">{line.label}</span>
+                  <span className="font-black text-forest-950">
+                    {formatCurrency(line.amount)}
+                  </span>
+                </div>
+              ))}
+              {pickupDropoff ? (
+                <div className="rounded-md bg-white px-3 py-2 text-xs font-semibold text-forest-700">
+                  Upphämtning/lämning: pris bekräftas separat.
+                </div>
+              ) : null}
+              <div className="mt-2 border-t border-forest-200 pt-4">
+                <div className="flex items-center justify-between gap-4">
+                  <span className="font-black text-forest-950">Totalpris</span>
+                  <span className="text-2xl font-black text-forest-950">
+                    {formatCurrency(priceSummary.total)}
+                  </span>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <p className="mt-4 text-sm leading-6 text-slate-600">
+              Välj servicepaket och fordonstyp för att se totalpriset.
+            </p>
+          )}
+        </aside>
+      </div>
+    </div>
+  );
+}
+
+function StepShell({
+  title,
+  description,
+  children
+}: {
+  title: string;
+  description: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section>
+      <h2 className="text-2xl font-black text-forest-950">{title}</h2>
+      <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+        {description}
+      </p>
+      <div className="mt-6">{children}</div>
+    </section>
+  );
+}
+
+function ChoiceButton({
+  active,
+  onClick,
+  title,
+  meta,
+  description,
+  icon: Icon
+}: {
+  active: boolean;
+  onClick: () => void;
+  title: string;
+  meta?: string;
+  description?: string;
+  icon?: LucideIcon;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={clsx(
+        "rounded-md border p-4 text-left transition hover:-translate-y-0.5",
+        active
+          ? "border-forest-600 bg-forest-50"
+          : "border-forest-100 bg-white hover:border-forest-300"
+      )}
+    >
+      <span className="flex items-start gap-3">
+        {Icon ? (
+          <span
+            className={clsx(
+              "flex h-12 w-12 shrink-0 items-center justify-center rounded-md",
+              active ? "bg-forest-600 text-white" : "bg-forest-50 text-forest-700"
+            )}
+          >
+            <Icon size={23} />
+          </span>
+        ) : null}
+        <span className="min-w-0 flex-1">
+          <span className="flex items-start justify-between gap-3">
+            <span className="font-black text-forest-950">{title}</span>
+            {active ? (
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-forest-600 text-white">
+                <Check size={14} />
+              </span>
+            ) : null}
+          </span>
+          {meta ? (
+            <span className="mt-1 block text-sm font-bold text-forest-700">
+              {meta}
+            </span>
+          ) : null}
+          {description ? (
+            <span className="mt-2 block text-sm leading-6 text-slate-600">
+              {description}
+            </span>
+          ) : null}
+        </span>
+      </span>
+    </button>
+  );
+}
+
+function InputWithIcon({
+  icon: Icon,
+  className,
+  alignTop = false,
+  children
+}: {
+  icon: LucideIcon;
+  className?: string;
+  alignTop?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <span className={clsx("relative block", className)}>
+      <Icon
+        size={18}
+        className={clsx(
+          "pointer-events-none absolute left-3 text-forest-600",
+          alignTop ? "top-3.5" : "top-1/2 -translate-y-1/2"
+        )}
+      />
+      {children}
+    </span>
+  );
+}
+
+function VehicleInfoCard({
+  vehicle,
+  className
+}: {
+  vehicle: VehicleRegistrationInfo;
+  className?: string;
+}) {
+  return (
+    <div
+      className={clsx(
+        "rounded-lg border border-forest-200 bg-gradient-to-br from-forest-50 to-white p-4",
+        className
+      )}
+    >
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3">
+          <span className="flex h-12 w-12 items-center justify-center rounded-md bg-forest-950 text-white">
+            <Car size={24} />
+          </span>
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.14em] text-forest-600">
+              Fordonsinfo hämtad
+            </p>
+            <p className="text-lg font-black text-forest-950">
+              {vehicle.make} {vehicle.model}
+            </p>
+          </div>
+        </div>
+        <span className="w-fit rounded-md bg-white px-3 py-2 text-sm font-black text-forest-950 shadow-sm">
+          {vehicle.licensePlate}
+        </span>
+      </div>
+      <div className="mt-4 grid gap-3 text-sm sm:grid-cols-4">
+        <VehicleFact label="Årsmodell" value={String(vehicle.year)} />
+        <VehicleFact label="Kaross" value={vehicle.bodyType} />
+        <VehicleFact label="Färg" value={vehicle.color} />
+        <VehicleFact label="Drivmedel" value={vehicle.fuelType} />
+      </div>
+      <p className="mt-4 rounded-md bg-white px-3 py-2 text-xs font-semibold leading-5 text-slate-600">
+        Demo just nu: informationen kommer från mockdata. Byt ut lookup-helpern
+        mot en riktig fordonsdataleverantör när API-åtkomst finns.
+      </p>
+    </div>
+  );
+}
+
+function VehicleFact({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="text-xs font-bold uppercase tracking-[0.12em] text-forest-600">
+        {label}
+      </p>
+      <p className="mt-1 font-black text-forest-950">{value}</p>
+    </div>
+  );
+}
+
+function Field({
+  label,
+  className,
+  children
+}: {
+  label: string;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className={clsx("grid gap-2", className)}>
+      <span className="field-label">{label}</span>
+      {children}
+    </div>
+  );
+}
+
+function ReviewDetails({
+  serviceId,
+  vehicleTypeId,
+  extras,
+  pickupDropoff,
+  customer,
+  selectedSlot,
+  priceSummary,
+  vehicleInfo
+}: {
+  serviceId: ServicePackageId | "";
+  vehicleTypeId: VehicleTypeId | "";
+  extras: ExtraId[];
+  pickupDropoff: boolean;
+  customer: CustomerState;
+  selectedSlot?: AvailableSlot;
+  priceSummary: ReturnType<typeof calculateBookingPrice> | null;
+  vehicleInfo?: VehicleRegistrationInfo;
+}) {
+  const service = servicePackages.find((item) => item.id === serviceId);
+  const vehicleType = vehicleTypes.find((item) => item.id === vehicleTypeId);
+  const selectedExtras = bookingExtras.filter((extra) => extras.includes(extra.id));
+
+  return (
+    <div className="grid gap-5">
+      <div className="grid gap-4 rounded-md border border-forest-100 bg-white p-4 sm:grid-cols-2">
+        <SummaryItem label="Service" value={service?.name ?? "-"} />
+        <SummaryItem label="Fordon" value={vehicleType?.name ?? "-"} />
+        <SummaryItem
+          label="Datum och tid"
+          value={selectedSlot ? `${selectedSlot.date} kl. ${selectedSlot.time}` : "-"}
+        />
+        <SummaryItem label="Registreringsnummer" value={customer.licensePlate || "-"} />
+        <SummaryItem label="Namn" value={customer.name || "-"} />
+        <SummaryItem label="Telefon" value={customer.phone || "-"} />
+        <SummaryItem label="E-post" value={customer.email || "-"} />
+        <SummaryItem
+          label="Tillval"
+          value={
+            [
+              ...selectedExtras.map((extra) => extra.name),
+              pickupDropoff ? "Upphämtning/lämning begärd" : ""
+            ]
+              .filter(Boolean)
+              .join(", ") || "Inga tillval"
+          }
+        />
+      </div>
+
+      {customer.message ? (
+        <div className="rounded-md border border-forest-100 bg-white p-4">
+          <SummaryItem label="Meddelande" value={customer.message} />
+        </div>
+      ) : null}
+
+      {vehicleInfo ? <VehicleInfoCard vehicle={vehicleInfo} /> : null}
+
+      {priceSummary ? (
+        <div className="rounded-md bg-forest-950 p-5 text-white">
+          <p className="text-sm font-bold uppercase tracking-[0.14em] text-forest-200">
+            Totalpris
+          </p>
+          <p className="mt-2 text-4xl font-black">
+            {formatCurrency(priceSummary.total)}
+          </p>
+          <p className="mt-2 text-sm text-forest-100">
+            Priset inkluderar valt paket, fordonstillägg och valda tillval.
+          </p>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function SummaryItem({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="text-xs font-bold uppercase tracking-[0.12em] text-forest-600">
+        {label}
+      </p>
+      <p className="mt-1 text-sm font-semibold leading-6 text-forest-950">
+        {value}
+      </p>
+    </div>
+  );
+}
