@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { Menu, X } from "lucide-react";
 import { useState } from "react";
 import { clsx } from "clsx";
+import { BrandLogo } from "@/components/BrandLogo";
 import { businessInfo, navItems } from "@/lib/site";
 
 export function Header() {
@@ -20,9 +21,7 @@ export function Header() {
           onClick={() => setIsOpen(false)}
           aria-label={`${businessInfo.name} startsida`}
         >
-          <span className="flex h-10 w-10 items-center justify-center rounded-md bg-forest-950 text-sm font-black text-white">
-            MB
-          </span>
+          <BrandLogo className="h-14 w-14" />
           <span className="leading-tight">
             <span className="block text-sm font-black text-forest-950">
               {businessInfo.shortName}

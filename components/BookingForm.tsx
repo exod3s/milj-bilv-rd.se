@@ -72,6 +72,7 @@ const extraIcons: Record<ExtraId, LucideIcon> = {
 type BookingFormProps = {
   availableSlots: AvailableSlot[];
   initialServiceId?: ServicePackageId;
+  variant?: "page" | "hero";
 };
 
 type CustomerState = {
@@ -105,8 +106,10 @@ type BookingResponse =
 
 export function BookingForm({
   availableSlots,
-  initialServiceId
+  initialServiceId,
+  variant = "page"
 }: BookingFormProps) {
+  const isHero = variant === "hero";
   const [step, setStep] = useState(0);
   const [serviceId, setServiceId] = useState<ServicePackageId | "">(
     initialServiceId ?? ""
@@ -131,6 +134,7 @@ export function BookingForm({
   );
 
   const selectedSlot = availableSlots.find((slot) => slot.id === selectedSlotId);
+  const visibleSlots = isHero ? availableSlots.slice(0, 6) : availableSlots;
 
   const priceSummary = useMemo(() => {
     if (!serviceId || !vehicleTypeId) {
@@ -322,8 +326,8 @@ export function BookingForm({
   }
 
   return (
-    <div className="surface overflow-hidden">
-      <div className="border-b border-forest-100 bg-white p-4 sm:p-6">
+    <div className={clsx("surface overflow-hidden", isHero && "shadow-none")}>
+      <div className={clsx("border-b border-forest-100 bg-white", isHero ? "p-3" : "p-4 sm:p-6")}>
         <div className="flex flex-wrap gap-2">
           {steps.map((item, index) => {
             const Icon = item.icon;
@@ -348,7 +352,7 @@ export function BookingForm({
                 )}
               >
                 <Icon size={15} />
-                <span>
+                <span className={clsx(isHero && "hidden sm:inline")}>
                   {index + 1}. {item.label}
                 </span>
               </button>
@@ -357,14 +361,20 @@ export function BookingForm({
         </div>
       </div>
 
-      <div className="grid gap-8 p-4 sm:p-6 lg:grid-cols-[1fr_20rem]">
+      <div
+        className={clsx(
+          "grid",
+          isHero ? "gap-4 p-3" : "gap-8 p-4 sm:p-6 lg:grid-cols-[1fr_20rem]"
+        )}
+      >
         <div>
           {step === 0 ? (
             <StepShell
               title="Välj servicepaket"
               description="Börja med behandlingen som passar bilen bäst. Priset uppdateras när fordonstyp och tillval är valda."
+              compact={isHero}
             >
-              <div className="grid gap-3">
+              <div className={clsx("grid", isHero ? "gap-2 sm:grid-cols-2" : "gap-3")}>
                 {servicePackages.map((service) => (
                   <ChoiceButton
                     key={service.id}
@@ -374,6 +384,7 @@ export function BookingForm({
                     meta={`Från ${formatCurrency(service.basePrice)} · ${service.duration}`}
                     description={service.description}
                     icon={serviceIcons[service.id]}
+                    compact={isHero}
                   />
                 ))}
               </div>
@@ -384,6 +395,7 @@ export function BookingForm({
             <StepShell
               title="Välj fordonstyp"
               description="Större bilar tar längre tid och får ett tydligt fordonstillägg."
+              compact={isHero}
             >
               <div className="grid gap-3 sm:grid-cols-2">
                 {vehicleTypes.map((vehicleType) => (
@@ -394,6 +406,7 @@ export function BookingForm({
                     title={vehicleType.name}
                     meta={`+${formatCurrency(vehicleType.adjustment)}`}
                     icon={vehicleIcons[vehicleType.id]}
+                    compact={isHero}
                   />
                 ))}
               </div>
@@ -412,6 +425,7 @@ export function BookingForm({
             <StepShell
               title="Lägg till tillval"
               description="Tillval är frivilliga. Upphämtning och lämning är en förfrågan och räknas inte in i priset ännu."
+              compact={isHero}
             >
               <div className="grid gap-3">
                 {bookingExtras.map((extra) => {
@@ -482,6 +496,7 @@ export function BookingForm({
             <StepShell
               title="Dina uppgifter"
               description="Registreringsnummer är obligatoriskt så att vi kan matcha bilen med bokningen."
+              compact={isHero}
             >
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field label="Namn">
@@ -590,9 +605,10 @@ export function BookingForm({
             <StepShell
               title="Välj datum och tid"
               description="Lediga tider kommer just nu från mockdata. Kalenderhjälpen är förberedd för Google Calendar free/busy."
+              compact={isHero}
             >
               <div className="grid gap-3 sm:grid-cols-2">
-                {availableSlots.map((slot) => (
+                {visibleSlots.map((slot) => (
                   <button
                     key={slot.id}
                     type="button"
@@ -626,6 +642,7 @@ export function BookingForm({
             <StepShell
               title="Granska och bekräfta"
               description="Kontrollera detaljerna innan du skickar bokningen. Priset räknas även om i backend."
+              compact={isHero}
             >
               <ReviewDetails
                 serviceId={serviceId}
@@ -646,7 +663,14 @@ export function BookingForm({
             </p>
           ) : null}
 
-          <div className="mt-7 flex flex-col-reverse gap-3 sm:flex-row sm:justify-between">
+          {isHero ? (
+            <CompactPriceSummary
+              priceSummary={priceSummary}
+              pickupDropoff={pickupDropoff}
+            />
+          ) : null}
+
+          <div className={clsx("flex flex-col-reverse gap-3 sm:flex-row sm:justify-between", isHero ? "mt-4" : "mt-7")}>
             <button
               type="button"
               onClick={goBack}
@@ -676,6 +700,7 @@ export function BookingForm({
           </div>
         </div>
 
+        {!isHero ? (
         <aside className="h-fit rounded-lg border border-forest-100 bg-forest-50 p-5">
           <p className="text-sm font-black uppercase tracking-[0.14em] text-forest-700">
             Prisöversikt
@@ -727,6 +752,7 @@ export function BookingForm({
             </p>
           )}
         </aside>
+        ) : null}
       </div>
     </div>
   );
@@ -735,19 +761,21 @@ export function BookingForm({
 function StepShell({
   title,
   description,
-  children
+  children,
+  compact = false
 }: {
   title: string;
   description: string;
   children: React.ReactNode;
+  compact?: boolean;
 }) {
   return (
     <section>
-      <h2 className="text-2xl font-black text-forest-950">{title}</h2>
-      <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+      <h2 className={clsx("font-black text-forest-950", compact ? "text-xl" : "text-2xl")}>{title}</h2>
+      <p className={clsx("mt-2 max-w-2xl text-sm leading-6 text-slate-600", compact && "hidden sm:block")}>
         {description}
       </p>
-      <div className="mt-6">{children}</div>
+      <div className={compact ? "mt-4" : "mt-6"}>{children}</div>
     </section>
   );
 }
@@ -758,7 +786,8 @@ function ChoiceButton({
   title,
   meta,
   description,
-  icon: Icon
+  icon: Icon,
+  compact = false
 }: {
   active: boolean;
   onClick: () => void;
@@ -766,13 +795,15 @@ function ChoiceButton({
   meta?: string;
   description?: string;
   icon?: LucideIcon;
+  compact?: boolean;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
       className={clsx(
-        "rounded-md border p-4 text-left transition hover:-translate-y-0.5",
+        "rounded-md border text-left transition hover:-translate-y-0.5",
+        compact ? "p-3" : "p-4",
         active
           ? "border-forest-600 bg-forest-50"
           : "border-forest-100 bg-white hover:border-forest-300"
@@ -783,6 +814,7 @@ function ChoiceButton({
           <span
             className={clsx(
               "flex h-12 w-12 shrink-0 items-center justify-center rounded-md",
+              compact && "h-10 w-10",
               active ? "bg-forest-600 text-white" : "bg-forest-50 text-forest-700"
             )}
           >
@@ -803,7 +835,7 @@ function ChoiceButton({
               {meta}
             </span>
           ) : null}
-          {description ? (
+          {description && !compact ? (
             <span className="mt-2 block text-sm leading-6 text-slate-600">
               {description}
             </span>
@@ -892,6 +924,39 @@ function VehicleFact({ label, value }: { label: string; value: string }) {
         {label}
       </p>
       <p className="mt-1 font-black text-forest-950">{value}</p>
+    </div>
+  );
+}
+
+function CompactPriceSummary({
+  priceSummary,
+  pickupDropoff
+}: {
+  priceSummary: ReturnType<typeof calculateBookingPrice> | null;
+  pickupDropoff: boolean;
+}) {
+  return (
+    <div className="mt-4 rounded-md border border-forest-200 bg-forest-50 p-3">
+      {priceSummary ? (
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.14em] text-forest-700">
+              Totalpris
+            </p>
+            <p className="text-2xl font-black text-forest-950">
+              {formatCurrency(priceSummary.total)}
+            </p>
+          </div>
+          <div className="text-sm font-semibold text-slate-700">
+            {priceSummary.lines.map((line) => line.label).join(" + ")}
+            {pickupDropoff ? " + upphämtning/lämning förfrågan" : ""}
+          </div>
+        </div>
+      ) : (
+        <p className="text-sm font-semibold text-slate-700">
+          Välj servicepaket och fordonstyp för att se totalpris.
+        </p>
+      )}
     </div>
   );
 }

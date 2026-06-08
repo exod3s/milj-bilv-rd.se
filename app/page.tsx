@@ -9,7 +9,10 @@ import { ReviewsSection } from "@/components/ReviewsSection";
 import { SectionHeading } from "@/components/SectionHeading";
 import { ServiceCard } from "@/components/ServiceCard";
 import { TrustBadges } from "@/components/TrustBadges";
+import { getAvailableSlots } from "@/lib/google-calendar";
 import { servicePackages } from "@/lib/pricing";
+
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Bilvård, rekond och biltvätt i Örnsköldsvik",
@@ -17,10 +20,12 @@ export const metadata: Metadata = {
     "Boka bilvård i Örnsköldsvik hos Miljö Bilvård i Ö-vik. Rekond, biltvätt, polering, invändig rengöring och lackskydd med tydliga priser."
 };
 
-export default function HomePage() {
+export default async function HomePage() {
+  const availableSlots = await getAvailableSlots();
+
   return (
     <>
-      <Hero />
+      <Hero availableSlots={availableSlots} />
 
       <section className="section-spacing bg-white">
         <div className="container-padded">

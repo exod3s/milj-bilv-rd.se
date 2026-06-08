@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Leaf, Mail, MapPin, Phone } from "lucide-react";
+import { BrandLogo } from "@/components/BrandLogo";
 import { businessInfo, navItems } from "@/lib/site";
 
 export function Footer() {
@@ -8,9 +9,7 @@ export function Footer() {
       <div className="container-padded grid gap-10 py-12 md:grid-cols-[1.2fr_0.8fr_0.8fr]">
         <div>
           <div className="flex items-center gap-3">
-            <span className="flex h-10 w-10 items-center justify-center rounded-md bg-forest-300 text-sm font-black text-forest-950">
-              MB
-            </span>
+            <BrandLogo className="h-16 w-16" />
             <div>
               <p className="font-black">{businessInfo.name}</p>
               <p className="text-sm text-forest-100">
