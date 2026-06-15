@@ -7,37 +7,80 @@ import type {
 
 export const servicePackages = [
   {
-    id: "exterior-wash",
-    name: "Utvändig tvätt",
-    basePrice: 399,
-    duration: "45-60 min",
+    id: "quick-wash",
+    name: "Snabbtvätt",
+    shortLabel: "Snabb och prisvärd tvätt",
+    basePrice: 150,
+    duration: "30 min",
+    durationMinutes: 30,
     description:
-      "Skonsam handtvätt, avfettning, fälgrengöring och torkning för en ren och fräsch bil.",
-    highlights: ["Handtvätt", "Fälgrengöring", "Miljöanpassade produkter"]
+      "En snabb utvändig uppfräschning för dig som vill få bilen ren utan en större behandling.",
+    highlights: ["Avspolning", "Skonsam schamponering", "Snabb avtorkning"]
+  },
+  {
+    id: "exterior-wash-polish",
+    name: "Utvändig tvätt",
+    shortLabel: "Utvändig tvätt med bättre finish",
+    basePrice: 399,
+    duration: "1 tim",
+    durationMinutes: 60,
+    description:
+      "Skonsam utvändig tvätt med avfettning, fälgrengöring och torkning för en ren och fräsch bil.",
+    highlights: ["Avfettning", "Fälgrengöring", "Handtvätt", "Torkning"]
   },
   {
     id: "interior-cleaning",
     name: "Invändig rengöring",
+    shortLabel: "Kupé, mattor och paneler",
     basePrice: 699,
-    duration: "1,5-2 tim",
+    duration: "2 tim",
+    durationMinutes: 120,
     description:
       "Noggrann dammsugning, rengöring av paneler, mattor, dörrsidor och invändiga ytor.",
-    highlights: ["Dammsugning", "Panelrengöring", "Mattor och textil"]
+    highlights: ["Dammsugning", "Panelrengöring", "Mattor", "Dörrsidor"]
   },
   {
     id: "complete-detail",
     name: "Komplett rekond",
+    shortLabel: "Invändigt och utvändigt",
     basePrice: 1499,
     duration: "3-5 tim",
+    durationMinutes: 240,
     description:
       "En helhetsbehandling för bilen med både utvändig och invändig rekond i premiumkänsla.",
-    highlights: ["Invändigt och utvändigt", "Djuprengöring", "Finishkontroll"]
+    highlights: ["Utvändig tvätt", "Invändig rengöring", "Djuprengöring", "Finishkontroll"]
+  },
+  {
+    id: "deluxe-machine-fix",
+    name: "Deluxe med maskinfixning",
+    shortLabel: "Kampanjpris",
+    basePrice: 1495,
+    originalPrice: 3000,
+    duration: "4 tim",
+    durationMinutes: 240,
+    description:
+      "Deluxebehandling med maskinfixning för en tydlig glanshöjning och en mer välvårdad helhetskänsla.",
+    highlights: ["Deluxetvätt", "Maskinfixning", "Glanshöjning", "Finishkontroll"]
+  },
+  {
+    id: "summer-discount",
+    name: "Utvändig tvätt med polish, maskinfix och motortvätt",
+    shortLabel: "Sommarrabatt",
+    basePrice: 2799,
+    originalPrice: 5600,
+    duration: "1 dag",
+    durationMinutes: 480,
+    description:
+      "Sommarrabatt på en omfattande utvändig behandling med polish, maskinfix och motortvätt.",
+    highlights: ["Utvändig tvätt", "Polish", "Maskinfix", "Motortvätt"]
   },
   {
     id: "polishing",
     name: "Polering",
+    shortLabel: "Glans och lättare repor",
     basePrice: 2499,
     duration: "1 dag",
+    durationMinutes: 480,
     description:
       "Maskinpolering som lyfter glans, reducerar tvättrepor och ger lacken nytt liv.",
     highlights: ["Maskinpolering", "Glanslyft", "Lackinspektion"]
@@ -45,8 +88,10 @@ export const servicePackages = [
   {
     id: "paint-protection",
     name: "Lackskydd",
+    shortLabel: "Skyddande behandling",
     basePrice: 3499,
     duration: "1 dag",
+    durationMinutes: 480,
     description:
       "Skyddande behandling som hjälper lacken hålla glans och gör bilen enklare att tvätta.",
     highlights: ["Långvarigt skydd", "Vattenavrinning", "Premiumfinish"]
@@ -54,15 +99,18 @@ export const servicePackages = [
 ] as const satisfies ReadonlyArray<{
   id: ServicePackageId;
   name: string;
+  shortLabel: string;
   basePrice: number;
+  originalPrice?: number;
   duration: string;
+  durationMinutes: number;
   description: string;
   highlights: string[];
 }>;
 
 export const vehicleTypes = [
   { id: "sedan", name: "Sedan", adjustment: 0 },
-  { id: "kombi", name: "Kombi", adjustment: 100 },
+  { id: "kombi", name: "Kombi", adjustment: 0 },
   { id: "suv", name: "SUV", adjustment: 200 },
   { id: "7-sits", name: "7-sits", adjustment: 300 }
 ] as const satisfies ReadonlyArray<{
@@ -77,12 +125,6 @@ export const bookingExtras = [
     name: "Hundhår",
     price: 200,
     description: "Extra tid för borttagning av hundhår i kupé och bagage."
-  },
-  {
-    id: "dirty-interior",
-    name: "Extra smutsig interiör",
-    price: 300,
-    description: "För bilar som behöver mer tid för invändig djuprengöring."
   }
 ] as const satisfies ReadonlyArray<{
   id: ExtraId;
@@ -101,6 +143,16 @@ export function formatCurrency(amount: number) {
 
 export function getServicePackage(id: ServicePackageId) {
   return servicePackages.find((service) => service.id === id);
+}
+
+export function getServiceDuration(id: ServicePackageId) {
+  const service = getServicePackage(id);
+  return service
+    ? {
+        label: service.duration,
+        minutes: service.durationMinutes
+      }
+    : null;
 }
 
 export function getVehicleType(id: VehicleTypeId) {

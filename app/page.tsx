@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ContactCta } from "@/components/ContactCta";
+import { CampaignOffers } from "@/components/CampaignOffers";
 import { GalleryPreview } from "@/components/GalleryPreview";
 import { Hero } from "@/components/Hero";
 import { PricingTable } from "@/components/PricingTable";
@@ -25,6 +26,8 @@ export default async function HomePage() {
 
   return (
     <>
+      <CampaignOffers compact />
+
       <Hero availableSlots={availableSlots} />
 
       <section className="section-spacing bg-white">
@@ -92,6 +95,8 @@ export default async function HomePage() {
           <TrustBadges />
         </div>
       </section>
+
+      <CampaignOffers />
 
       <ContactCta />
     </>

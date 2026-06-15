@@ -1,4 +1,5 @@
 import type { AvailableSlot, BookingRecord } from "@/lib/booking-types";
+import { getServiceDuration, getServicePackage } from "@/lib/pricing";
 
 const slotTimes = ["08:30", "10:30", "13:00", "15:00"];
 
@@ -42,6 +43,15 @@ export async function getAvailableSlots(): Promise<AvailableSlot[]> {
 }
 
 export async function createCalendarEvent(booking: BookingRecord) {
+  const service = getServicePackage(booking.serviceId);
+  const duration = getServiceDuration(booking.serviceId);
+  const start = new Date(`${booking.date}T${booking.time}:00`);
+  const end = new Date(start);
+
+  if (duration) {
+    end.setMinutes(start.getMinutes() + duration.minutes);
+  }
+
   // Future Google Calendar integration:
   // GOOGLE_CLIENT_EMAIL and GOOGLE_PRIVATE_KEY authenticate a service account.
   // GOOGLE_CALENDAR_ID identifies the business calendar where events are created.
@@ -49,8 +59,12 @@ export async function createCalendarEvent(booking: BookingRecord) {
   console.log("Mock calendar event created", {
     calendarId: process.env.GOOGLE_CALENDAR_ID,
     bookingId: booking.id,
+    service: service?.name ?? booking.serviceId,
     date: booking.date,
     time: booking.time,
+    durationMinutes: duration?.minutes,
+    start: start.toISOString(),
+    end: end.toISOString(),
     customer: booking.customer.name
   });
 

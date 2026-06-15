@@ -5,7 +5,7 @@ import type { BookingRecord } from "@/lib/booking-types";
 import { bookingRequestSchema } from "@/lib/booking-types";
 import { sendAdminBookingEmail, sendCustomerConfirmationEmail } from "@/lib/email";
 import { createCalendarEvent, getAvailableSlots } from "@/lib/google-calendar";
-import { calculateBookingPrice } from "@/lib/pricing";
+import { calculateBookingPrice, getServicePackage, getVehicleType } from "@/lib/pricing";
 
 export const runtime = "nodejs";
 
@@ -66,6 +66,8 @@ export async function POST(request: Request) {
       vehicleTypeId: bookingInput.vehicleTypeId,
       extras: bookingInput.extras
     });
+    const service = getServicePackage(bookingInput.serviceId);
+    const vehicleType = getVehicleType(bookingInput.vehicleTypeId);
 
     const booking: BookingRecord = {
       ...bookingInput,
@@ -84,6 +86,9 @@ export async function POST(request: Request) {
       ok: true,
       booking: {
         id: booking.id,
+        service: service?.name ?? booking.serviceId,
+        vehicleType: vehicleType?.name ?? booking.vehicleTypeId,
+        duration: service?.duration ?? "-",
         date: booking.date,
         time: booking.time,
         price: booking.price

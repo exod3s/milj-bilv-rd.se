@@ -35,7 +35,7 @@ export default function PricesPage() {
           <div className="grid gap-4 md:grid-cols-3">
             {[
               "Hundhår lägger till 200 kr.",
-              "Extra smutsig interiör lägger till 300 kr.",
+              "Kombi har inget extra fordonstillägg.",
               "Upphämtning och lämning är en förfrågan utan automatiskt pris."
             ].map((note) => (
               <div key={note} className="surface p-5">

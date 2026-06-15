@@ -50,9 +50,12 @@ const steps: { label: string; icon: LucideIcon }[] = [
 ] as const;
 
 const serviceIcons: Record<ServicePackageId, LucideIcon> = {
-  "exterior-wash": Droplets,
+  "quick-wash": Droplets,
+  "exterior-wash-polish": Droplets,
   "interior-cleaning": SprayCan,
   "complete-detail": Sparkles,
+  "deluxe-machine-fix": Sparkles,
+  "summer-discount": WandSparkles,
   polishing: WandSparkles,
   "paint-protection": Shield
 };
@@ -65,8 +68,7 @@ const vehicleIcons: Record<VehicleTypeId, LucideIcon> = {
 };
 
 const extraIcons: Record<ExtraId, LucideIcon> = {
-  "dog-hair": Dog,
-  "dirty-interior": SprayCan
+  "dog-hair": Dog
 };
 
 type BookingFormProps = {
@@ -97,7 +99,11 @@ type VehicleLookupResponse =
 type BookingResponse =
   | {
       ok: true;
-      booking: Pick<BookingRecord, "id" | "date" | "time" | "price">;
+      booking: Pick<BookingRecord, "id" | "date" | "time" | "price"> & {
+        service: string;
+        vehicleType: string;
+        duration: string;
+      };
     }
   | {
       ok: false;
@@ -317,9 +323,12 @@ export function BookingForm({
           visas här och mockade e-postfunktioner har körts i backend.
         </p>
         <div className="mt-6 grid gap-3 rounded-md bg-forest-50 p-4 text-sm font-semibold text-forest-950 sm:grid-cols-3">
+          <span>Paket: {confirmation.booking.service}</span>
+          <span>Fordonstyp: {confirmation.booking.vehicleType}</span>
+          <span>Varaktighet: {confirmation.booking.duration}</span>
           <span>Datum: {confirmation.booking.date}</span>
           <span>Tid: {confirmation.booking.time}</span>
-          <span>Pris: {formatCurrency(confirmation.booking.price.total)}</span>
+          <span>Slutpris: {formatCurrency(confirmation.booking.price.total)}</span>
         </div>
       </div>
     );
@@ -376,13 +385,11 @@ export function BookingForm({
             >
               <div className={clsx("grid", isHero ? "gap-2 sm:grid-cols-2" : "gap-3")}>
                 {servicePackages.map((service) => (
-                  <ChoiceButton
+                  <PackageAccordionCard
                     key={service.id}
                     active={serviceId === service.id}
                     onClick={() => setServiceId(service.id)}
-                    title={service.name}
-                    meta={`Från ${formatCurrency(service.basePrice)} · ${service.duration}`}
-                    description={service.description}
+                    service={service}
                     icon={serviceIcons[service.id]}
                     compact={isHero}
                   />
@@ -846,6 +853,83 @@ function ChoiceButton({
   );
 }
 
+function PackageAccordionCard({
+  active,
+  onClick,
+  service,
+  icon: Icon,
+  compact = false
+}: {
+  active: boolean;
+  onClick: () => void;
+  service: (typeof servicePackages)[number];
+  icon: LucideIcon;
+  compact?: boolean;
+}) {
+  return (
+    <article
+      className={clsx(
+        "rounded-md border bg-white text-left transition hover:-translate-y-0.5",
+        active ? "border-forest-400 ring-2 ring-forest-100" : "border-black/10",
+        compact ? "p-3" : "p-4"
+      )}
+    >
+      <button
+        type="button"
+        onClick={onClick}
+        className="flex w-full items-center gap-3 text-left"
+        aria-expanded={active}
+      >
+        <span
+          className={clsx(
+            "flex h-11 w-11 shrink-0 items-center justify-center rounded-md",
+            active ? "bg-forest-300 text-forest-950" : "bg-forest-50 text-forest-700"
+          )}
+        >
+          <Icon size={22} />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="flex flex-wrap items-center justify-between gap-2">
+            <span className="font-black text-forest-950">{service.name}</span>
+            <span className="font-black text-forest-950">
+              från {formatCurrency(service.basePrice)}
+            </span>
+          </span>
+          <span className="mt-1 block text-sm font-bold text-forest-700">
+            {service.shortLabel}
+          </span>
+        </span>
+      </button>
+
+      {active ? (
+        <div className="mt-4 border-t border-black/10 pt-4">
+          <p className="text-sm leading-6 text-slate-700">
+            {service.description}
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {service.highlights.map((highlight) => (
+              <span
+                key={highlight}
+                className="rounded-md bg-polish-mist px-3 py-2 text-xs font-black text-forest-950"
+              >
+                {highlight}
+              </span>
+            ))}
+          </div>
+          <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <span className="text-sm font-black text-forest-700">
+              Varaktighet: {service.duration}
+            </span>
+            <button type="button" onClick={onClick} className="button-primary py-2">
+              Välj paket
+            </button>
+          </div>
+        </div>
+      ) : null}
+    </article>
+  );
+}
+
 function InputWithIcon({
   icon: Icon,
   className,
@@ -1006,6 +1090,7 @@ function ReviewDetails({
       <div className="grid gap-4 rounded-md border border-forest-100 bg-white p-4 sm:grid-cols-2">
         <SummaryItem label="Service" value={service?.name ?? "-"} />
         <SummaryItem label="Fordon" value={vehicleType?.name ?? "-"} />
+        <SummaryItem label="Varaktighet" value={service?.duration ?? "-"} />
         <SummaryItem
           label="Datum och tid"
           value={selectedSlot ? `${selectedSlot.date} kl. ${selectedSlot.time}` : "-"}

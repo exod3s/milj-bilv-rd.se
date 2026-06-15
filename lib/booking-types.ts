@@ -1,16 +1,19 @@
 import { z } from "zod";
 
 export const servicePackageIds = [
-  "exterior-wash",
+  "quick-wash",
+  "exterior-wash-polish",
   "interior-cleaning",
   "complete-detail",
+  "deluxe-machine-fix",
+  "summer-discount",
   "polishing",
   "paint-protection"
 ] as const;
 
 export const vehicleTypeIds = ["sedan", "kombi", "suv", "7-sits"] as const;
 
-export const extraIds = ["dog-hair", "dirty-interior"] as const;
+export const extraIds = ["dog-hair"] as const;
 
 export type ServicePackageId = (typeof servicePackageIds)[number];
 export type VehicleTypeId = (typeof vehicleTypeIds)[number];
