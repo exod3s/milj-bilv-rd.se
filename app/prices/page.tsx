@@ -3,6 +3,9 @@ import { ContactCta } from "@/components/ContactCta";
 import { PageHero } from "@/components/PageHero";
 import { PricingTable } from "@/components/PricingTable";
 import { SectionHeading } from "@/components/SectionHeading";
+import { readServices } from "@/lib/service-store";
+
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Priser för biltvätt, rekond och polering",
@@ -10,7 +13,9 @@ export const metadata: Metadata = {
     "Prislista för biltvätt, invändig rekond, komplett rekond, polering och lackskydd i Örnsköldsvik."
 };
 
-export default function PricesPage() {
+export default async function PricesPage() {
+  const services = await readServices();
+
   return (
     <>
       <PageHero
@@ -21,7 +26,7 @@ export default function PricesPage() {
 
       <section className="section-spacing bg-white">
         <div className="container-padded">
-          <PricingTable />
+          <PricingTable services={services} />
         </div>
       </section>
 

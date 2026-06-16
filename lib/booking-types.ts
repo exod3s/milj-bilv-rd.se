@@ -1,14 +1,35 @@
 import { z } from "zod";
 
 export const servicePackageIds = [
-  "quick-wash",
-  "exterior-wash-polish",
-  "interior-cleaning",
-  "complete-detail",
-  "deluxe-machine-fix",
+  "snabbtvatt",
+  "utvandig-handtvatt",
+  "invandig-handtvatt",
+  "deluxe-tvatt",
+  "deluxe-maskinvaxning",
+  "deluxe-motortvatt-invandig",
+  "bronz-1",
+  "bronz-2",
+  "silver",
+  "guld",
+  "platinum",
+  "diamant",
+  "glasbehandling",
+  "motortvatt",
+  "satesrengoring",
+  "lyktpolering",
+  "husbil-ut-tvatt",
+  "husbil-deluxe",
+  "husbil-polera",
+  "dackbyte",
+  "dackhotell",
+  "dackbyte-balansering",
+  "balansering",
+  "dackomlaggning-balansering",
   "summer-discount",
-  "polishing",
-  "paint-protection"
+  "deluxe-kort",
+  "deluxe-maskinvaxning-kort",
+  "bronz-kort-1",
+  "silver-kort"
 ] as const;
 
 export const vehicleTypeIds = ["sedan", "kombi", "suv", "7-sits"] as const;
@@ -42,8 +63,27 @@ export type BookingRecord = BookingRequest & {
   id: string;
   createdAt: string;
   price: PriceSummary;
-  status: "confirmed";
+  status: BookingStatus;
+  serviceName?: string;
+  vehicleTypeName?: string;
+  duration?: string;
+  durationMinutes?: number;
 };
+
+export type BookingStatus =
+  | "new"
+  | "confirmed"
+  | "in-progress"
+  | "completed"
+  | "cancelled";
+
+export const bookingStatuses = [
+  "new",
+  "confirmed",
+  "in-progress",
+  "completed",
+  "cancelled"
+] as const satisfies readonly BookingStatus[];
 
 export type AvailableSlot = {
   id: string;

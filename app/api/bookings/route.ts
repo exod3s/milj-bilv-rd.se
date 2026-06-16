@@ -1,31 +1,13 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import path from "node:path";
 import { NextResponse } from "next/server";
 import type { BookingRecord } from "@/lib/booking-types";
 import { bookingRequestSchema } from "@/lib/booking-types";
+import { saveBooking } from "@/lib/booking-store";
 import { sendAdminBookingEmail, sendCustomerConfirmationEmail } from "@/lib/email";
 import { createCalendarEvent, getAvailableSlots } from "@/lib/google-calendar";
-import { calculateBookingPrice, getServicePackage, getVehicleType } from "@/lib/pricing";
+import { calculateBookingPriceFromCatalog, getVehicleType } from "@/lib/pricing";
+import { readServices } from "@/lib/service-store";
 
 export const runtime = "nodejs";
-
-const bookingsFile = path.join(process.cwd(), "data", "bookings.json");
-
-async function readBookings(): Promise<BookingRecord[]> {
-  try {
-    const file = await readFile(bookingsFile, "utf8");
-    return JSON.parse(file) as BookingRecord[];
-  } catch {
-    return [];
-  }
-}
-
-async function saveBooking(booking: BookingRecord) {
-  await mkdir(path.dirname(bookingsFile), { recursive: true });
-  const bookings = await readBookings();
-  bookings.push(booking);
-  await writeFile(bookingsFile, JSON.stringify(bookings, null, 2), "utf8");
-}
 
 export async function POST(request: Request) {
   try {
@@ -61,12 +43,13 @@ export async function POST(request: Request) {
       );
     }
 
-    const price = calculateBookingPrice({
+    const services = await readServices();
+    const price = calculateBookingPriceFromCatalog(services, {
       serviceId: bookingInput.serviceId,
       vehicleTypeId: bookingInput.vehicleTypeId,
       extras: bookingInput.extras
     });
-    const service = getServicePackage(bookingInput.serviceId);
+    const service = services.find((item) => item.id === bookingInput.serviceId);
     const vehicleType = getVehicleType(bookingInput.vehicleTypeId);
 
     const booking: BookingRecord = {
@@ -74,7 +57,11 @@ export async function POST(request: Request) {
       id: crypto.randomUUID(),
       createdAt: new Date().toISOString(),
       price,
-      status: "confirmed"
+      status: "new",
+      serviceName: service?.name,
+      vehicleTypeName: vehicleType?.name,
+      duration: service?.duration,
+      durationMinutes: service?.durationMinutes
     };
 
     await saveBooking(booking);

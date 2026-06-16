@@ -2,7 +2,15 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 
-export const galleryItems = [
+export type GalleryPreviewItem = {
+  title: string;
+  category: string;
+  beforeImage: string;
+  afterImage: string;
+  description?: string;
+};
+
+export const galleryItems: GalleryPreviewItem[] = [
   {
     title: "Lacklyft efter polering",
     category: "Polering",
@@ -31,10 +39,15 @@ export const galleryItems = [
 
 type GalleryPreviewProps = {
   showAll?: boolean;
+  items?: GalleryPreviewItem[];
 };
 
-export function GalleryPreview({ showAll = false }: GalleryPreviewProps) {
-  const items = showAll ? galleryItems : galleryItems.slice(0, 3);
+export function GalleryPreview({
+  showAll = false,
+  items: customItems
+}: GalleryPreviewProps) {
+  const sourceItems = customItems && customItems.length > 0 ? customItems : galleryItems;
+  const items = showAll ? sourceItems : sourceItems.slice(0, 3);
 
   return (
     <div>
@@ -73,8 +86,8 @@ export function GalleryPreview({ showAll = false }: GalleryPreviewProps) {
               </p>
               <h3 className="mt-2 font-black text-forest-950">{item.title}</h3>
               <p className="mt-2 text-sm leading-6 text-slate-600">
-                Bildkortet är förberett för riktiga före- och efterbilder när
-                verksamhetens egna bilder läggs in.
+                {item.description ??
+                  "Bildkortet är förberett för riktiga före- och efterbilder när verksamhetens egna bilder läggs in."}
               </p>
             </div>
           </article>

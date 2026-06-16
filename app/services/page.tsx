@@ -4,7 +4,10 @@ import { ContactCta } from "@/components/ContactCta";
 import { PageHero } from "@/components/PageHero";
 import { SectionHeading } from "@/components/SectionHeading";
 import { ServiceCard } from "@/components/ServiceCard";
-import { servicePackages } from "@/lib/pricing";
+import { serviceCategories } from "@/lib/pricing";
+import { readServices } from "@/lib/service-store";
+
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Tjänster för bilvård och rekond",
@@ -19,7 +22,9 @@ const processSteps = [
   "Vi gör en slutkontroll och går igenom resultatet med dig."
 ];
 
-export default function ServicesPage() {
+export default async function ServicesPage() {
+  const services = await readServices();
+
   return (
     <>
       <PageHero
@@ -30,10 +35,29 @@ export default function ServicesPage() {
 
       <section className="section-spacing bg-white">
         <div className="container-padded">
-          <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-            {servicePackages.map((service) => (
-              <ServiceCard key={service.id} service={service} />
-            ))}
+          <div className="grid gap-10">
+            {serviceCategories.map((category) => {
+              const categoryServices = services.filter(
+                (service) => service.category === category
+              );
+
+              if (categoryServices.length === 0) {
+                return null;
+              }
+
+              return (
+                <div key={category}>
+                  <h2 className="mb-5 text-2xl font-black text-forest-950">
+                    {category}
+                  </h2>
+                  <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+                    {categoryServices.map((service) => (
+                      <ServiceCard key={service.id} service={service} />
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       </section>

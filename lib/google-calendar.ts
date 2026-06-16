@@ -45,11 +45,12 @@ export async function getAvailableSlots(): Promise<AvailableSlot[]> {
 export async function createCalendarEvent(booking: BookingRecord) {
   const service = getServicePackage(booking.serviceId);
   const duration = getServiceDuration(booking.serviceId);
+  const durationMinutes = booking.durationMinutes ?? duration?.minutes;
   const start = new Date(`${booking.date}T${booking.time}:00`);
   const end = new Date(start);
 
-  if (duration) {
-    end.setMinutes(start.getMinutes() + duration.minutes);
+  if (durationMinutes) {
+    end.setMinutes(start.getMinutes() + durationMinutes);
   }
 
   // Future Google Calendar integration:
@@ -59,10 +60,10 @@ export async function createCalendarEvent(booking: BookingRecord) {
   console.log("Mock calendar event created", {
     calendarId: process.env.GOOGLE_CALENDAR_ID,
     bookingId: booking.id,
-    service: service?.name ?? booking.serviceId,
+    service: booking.serviceName ?? service?.name ?? booking.serviceId,
     date: booking.date,
     time: booking.time,
-    durationMinutes: duration?.minutes,
+    durationMinutes,
     start: start.toISOString(),
     end: end.toISOString(),
     customer: booking.customer.name

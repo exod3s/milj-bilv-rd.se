@@ -16,7 +16,6 @@ import {
   MessageSquare,
   Phone,
   Search,
-  Shield,
   Sparkles,
   SprayCan,
   User,
@@ -34,9 +33,11 @@ import type {
 } from "@/lib/booking-types";
 import {
   bookingExtras,
-  calculateBookingPrice,
+  calculateBookingPriceFromCatalog,
   formatCurrency,
+  type ServicePackage,
   servicePackages,
+  serviceCategories,
   vehicleTypes
 } from "@/lib/pricing";
 
@@ -49,16 +50,15 @@ const steps: { label: string; icon: LucideIcon }[] = [
   { label: "Granska", icon: BadgeCheck }
 ] as const;
 
-const serviceIcons: Record<ServicePackageId, LucideIcon> = {
-  "quick-wash": Droplets,
-  "exterior-wash-polish": Droplets,
-  "interior-cleaning": SprayCan,
-  "complete-detail": Sparkles,
-  "deluxe-machine-fix": Sparkles,
-  "summer-discount": WandSparkles,
-  polishing: WandSparkles,
-  "paint-protection": Shield
-};
+const categoryIcons = {
+  Biltvättspaket: Droplets,
+  Rekondpaket: Sparkles,
+  "Övriga Behandlingar": SprayCan,
+  Däckverksamhet: Car,
+  Husbil: Car,
+  Presentkort: BadgeCheck,
+  Rabatter: WandSparkles
+} as const satisfies Record<(typeof serviceCategories)[number], LucideIcon>;
 
 const vehicleIcons: Record<VehicleTypeId, LucideIcon> = {
   sedan: Car,
@@ -74,6 +74,7 @@ const extraIcons: Record<ExtraId, LucideIcon> = {
 type BookingFormProps = {
   availableSlots: AvailableSlot[];
   initialServiceId?: ServicePackageId;
+  services?: ServicePackage[];
   variant?: "page" | "hero";
 };
 
@@ -113,10 +114,16 @@ type BookingResponse =
 export function BookingForm({
   availableSlots,
   initialServiceId,
+  services = [...servicePackages],
   variant = "page"
 }: BookingFormProps) {
   const isHero = variant === "hero";
+  const initialCategory =
+    services.find((service) => service.id === initialServiceId)?.category ??
+    "Biltvättspaket";
   const [step, setStep] = useState(0);
+  const [selectedCategory, setSelectedCategory] =
+    useState<(typeof serviceCategories)[number]>(initialCategory);
   const [serviceId, setServiceId] = useState<ServicePackageId | "">(
     initialServiceId ?? ""
   );
@@ -141,18 +148,32 @@ export function BookingForm({
 
   const selectedSlot = availableSlots.find((slot) => slot.id === selectedSlotId);
   const visibleSlots = isHero ? availableSlots.slice(0, 6) : availableSlots;
+  const bookableCategories = serviceCategories.filter((category) =>
+    services.some((service) => service.bookable && service.category === category)
+  );
+  const visibleServices = services.filter(
+    (service) => service.bookable && service.category === selectedCategory
+  );
 
   const priceSummary = useMemo(() => {
     if (!serviceId || !vehicleTypeId) {
       return null;
     }
 
-    return calculateBookingPrice({
-      serviceId,
-      vehicleTypeId,
-      extras
-    });
-  }, [extras, serviceId, vehicleTypeId]);
+    try {
+      return calculateBookingPriceFromCatalog(services, {
+        serviceId,
+        vehicleTypeId,
+        extras
+      });
+    } catch {
+      return null;
+    }
+  }, [extras, serviceId, services, vehicleTypeId]);
+
+  const selectedVehicleRestriction =
+    serviceId === "summer-discount" &&
+    (vehicleTypeId === "suv" || vehicleTypeId === "7-sits");
 
   function updateCustomer(field: keyof CustomerState, value: string) {
     setCustomer((current) => ({
@@ -383,14 +404,37 @@ export function BookingForm({
               description="Börja med behandlingen som passar bilen bäst. Priset uppdateras när fordonstyp och tillval är valda."
               compact={isHero}
             >
-              <div className={clsx("grid", isHero ? "gap-2 sm:grid-cols-2" : "gap-3")}>
-                {servicePackages.map((service) => (
+              <div className="mb-4 flex gap-2 overflow-x-auto pb-2">
+                {bookableCategories.map((category) => {
+                  const Icon = categoryIcons[category];
+
+                  return (
+                    <button
+                      key={category}
+                      type="button"
+                      onClick={() => setSelectedCategory(category)}
+                      className={clsx(
+                        "inline-flex shrink-0 items-center gap-2 rounded-md border px-3 py-2 text-xs font-black transition",
+                        selectedCategory === category
+                          ? "border-forest-950 bg-forest-950 text-white"
+                          : "border-black/10 bg-white text-forest-950 hover:border-forest-300"
+                      )}
+                    >
+                      <Icon size={15} />
+                      {category}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className={clsx("grid", isHero ? "gap-2" : "gap-3")}>
+                {visibleServices.map((service) => (
                   <PackageAccordionCard
                     key={service.id}
                     active={serviceId === service.id}
                     onClick={() => setServiceId(service.id)}
                     service={service}
-                    icon={serviceIcons[service.id]}
+                    icon={categoryIcons[service.category]}
                     compact={isHero}
                   />
                 ))}
@@ -652,6 +696,7 @@ export function BookingForm({
               compact={isHero}
             >
               <ReviewDetails
+                services={services}
                 serviceId={serviceId}
                 vehicleTypeId={vehicleTypeId}
                 extras={extras}
@@ -667,6 +712,13 @@ export function BookingForm({
           {formError ? (
             <p className="mt-5 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
               {formError}
+            </p>
+          ) : null}
+
+          {selectedVehicleRestriction ? (
+            <p className="mt-5 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
+              Detta erbjudande gäller endast sedan och kombi. För SUV och
+              7-sits, kontakta oss för pris.
             </p>
           ) : null}
 
@@ -697,7 +749,7 @@ export function BookingForm({
               <button
                 type="button"
                 onClick={submitBooking}
-                disabled={isSubmitting}
+                disabled={isSubmitting || selectedVehicleRestriction}
                 className="button-primary disabled:cursor-wait disabled:opacity-70"
               >
                 {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : null}
@@ -727,7 +779,7 @@ export function BookingForm({
                     {customer.vehicleInfo.year}
                   </p>
                 </div>
-              ) : null}
+            ) : null}
               {priceSummary.lines.map((line) => (
                 <div
                   key={`${line.type}-${line.label}`}
@@ -862,7 +914,7 @@ function PackageAccordionCard({
 }: {
   active: boolean;
   onClick: () => void;
-  service: (typeof servicePackages)[number];
+  service: ServicePackage;
   icon: LucideIcon;
   compact?: boolean;
 }) {
@@ -1016,7 +1068,7 @@ function CompactPriceSummary({
   priceSummary,
   pickupDropoff
 }: {
-  priceSummary: ReturnType<typeof calculateBookingPrice> | null;
+  priceSummary: ReturnType<typeof calculateBookingPriceFromCatalog> | null;
   pickupDropoff: boolean;
 }) {
   return (
@@ -1063,6 +1115,7 @@ function Field({
 }
 
 function ReviewDetails({
+  services,
   serviceId,
   vehicleTypeId,
   extras,
@@ -1072,16 +1125,17 @@ function ReviewDetails({
   priceSummary,
   vehicleInfo
 }: {
+  services: ServicePackage[];
   serviceId: ServicePackageId | "";
   vehicleTypeId: VehicleTypeId | "";
   extras: ExtraId[];
   pickupDropoff: boolean;
   customer: CustomerState;
   selectedSlot?: AvailableSlot;
-  priceSummary: ReturnType<typeof calculateBookingPrice> | null;
+  priceSummary: ReturnType<typeof calculateBookingPriceFromCatalog> | null;
   vehicleInfo?: VehicleRegistrationInfo;
 }) {
-  const service = servicePackages.find((item) => item.id === serviceId);
+  const service = services.find((item) => item.id === serviceId);
   const vehicleType = vehicleTypes.find((item) => item.id === vehicleTypeId);
   const selectedExtras = bookingExtras.filter((extra) => extras.includes(extra.id));
 

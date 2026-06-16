@@ -3,12 +3,14 @@ import Link from "next/link";
 import { CheckCircle, Sparkles } from "lucide-react";
 import { BookingForm } from "@/components/BookingForm";
 import type { AvailableSlot } from "@/lib/booking-types";
+import type { ServicePackage } from "@/lib/pricing";
 
 type HeroProps = {
   availableSlots: AvailableSlot[];
+  services: ServicePackage[];
 };
 
-export function Hero({ availableSlots }: HeroProps) {
+export function Hero({ availableSlots, services }: HeroProps) {
   return (
     <section className="relative overflow-hidden bg-forest-950 text-white">
       <div className="absolute inset-0">
@@ -67,7 +69,7 @@ export function Hero({ availableSlots }: HeroProps) {
               Välj paket och se totalpris direkt.
             </p>
           </div>
-          <BookingForm availableSlots={availableSlots} variant="hero" />
+          <BookingForm availableSlots={availableSlots} services={services} variant="hero" />
         </div>
       </div>
     </section>

@@ -4,6 +4,7 @@ import { PageHero } from "@/components/PageHero";
 import type { ServicePackageId } from "@/lib/booking-types";
 import { servicePackageIds } from "@/lib/booking-types";
 import { getAvailableSlots } from "@/lib/google-calendar";
+import { readServices } from "@/lib/service-store";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +29,7 @@ export default async function BookingPage({ searchParams }: BookingPageProps) {
     ? (requestedService as ServicePackageId)
     : undefined;
   const availableSlots = await getAvailableSlots();
+  const services = await readServices();
 
   return (
     <>
@@ -41,6 +43,7 @@ export default async function BookingPage({ searchParams }: BookingPageProps) {
         <div className="container-padded">
           <BookingForm
             availableSlots={availableSlots}
+            services={services}
             initialServiceId={initialServiceId}
           />
         </div>

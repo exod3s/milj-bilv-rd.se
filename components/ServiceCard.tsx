@@ -1,30 +1,28 @@
 import Link from "next/link";
 import Image from "next/image";
 import { ArrowRight, Clock } from "lucide-react";
-import type { servicePackages } from "@/lib/pricing";
+import type { ServicePackage } from "@/lib/pricing";
 import { formatCurrency } from "@/lib/pricing";
 
 type ServiceCardProps = {
-  service: (typeof servicePackages)[number];
+  service: ServicePackage;
 };
 
-const serviceImages: Record<string, string> = {
-  "quick-wash":
+const categoryImages: Record<string, string> = {
+  Biltvättspaket:
     "https://images.unsplash.com/photo-1607860108855-64acf2078ed9?auto=format&fit=crop&w=900&q=85",
-  "exterior-wash-polish":
-    "https://images.unsplash.com/photo-1607860108855-64acf2078ed9?auto=format&fit=crop&w=900&q=85",
-  "interior-cleaning":
-    "https://images.unsplash.com/photo-1550355291-bbee04a92027?auto=format&fit=crop&w=900&q=85",
-  "complete-detail":
-    "https://images.unsplash.com/photo-1517524008697-84bbe3c3fd98?auto=format&fit=crop&w=900&q=85",
-  "deluxe-machine-fix":
+  Rekondpaket:
     "https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?auto=format&fit=crop&w=900&q=85",
-  "summer-discount":
-    "https://images.unsplash.com/photo-1607860108855-64acf2078ed9?auto=format&fit=crop&w=900&q=85",
-  polishing:
+  "Övriga Behandlingar":
+    "https://images.unsplash.com/photo-1517524008697-84bbe3c3fd98?auto=format&fit=crop&w=900&q=85",
+  Däckverksamhet:
     "https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=900&q=85",
-  "paint-protection":
-    "https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?auto=format&fit=crop&w=900&q=85"
+  Husbil:
+    "https://images.unsplash.com/photo-1542362567-b07e54358753?auto=format&fit=crop&w=900&q=85",
+  Presentkort:
+    "https://images.unsplash.com/photo-1493238792000-8113da705763?auto=format&fit=crop&w=900&q=85",
+  Rabatter:
+    "https://images.unsplash.com/photo-1607860108855-64acf2078ed9?auto=format&fit=crop&w=900&q=85"
 };
 
 export function ServiceCard({ service }: ServiceCardProps) {
@@ -32,7 +30,7 @@ export function ServiceCard({ service }: ServiceCardProps) {
     <article className="surface flex h-full flex-col overflow-hidden transition hover:-translate-y-1 hover:border-forest-300">
       <div className="relative aspect-[16/10] overflow-hidden bg-forest-950">
         <Image
-          src={serviceImages[service.id]}
+          src={categoryImages[service.category]}
           alt={`${service.name} hos Miljö Bilvård i Ö-vik`}
           fill
           sizes="(min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw"
@@ -70,10 +68,10 @@ export function ServiceCard({ service }: ServiceCardProps) {
           ))}
         </div>
         <Link
-          href={`/booking?service=${service.id}`}
+          href={service.bookable ? `/booking?service=${service.id}` : "/contact"}
           className="mt-6 inline-flex items-center gap-2 text-sm font-black text-forest-700 hover:text-forest-950"
         >
-          Boka {service.name.toLowerCase()}
+          {service.bookable ? `Boka ${service.name.toLowerCase()}` : "Kontakta oss"}
           <ArrowRight size={16} />
         </Link>
       </div>

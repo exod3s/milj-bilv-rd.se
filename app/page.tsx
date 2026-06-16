@@ -11,7 +11,7 @@ import { SectionHeading } from "@/components/SectionHeading";
 import { ServiceCard } from "@/components/ServiceCard";
 import { TrustBadges } from "@/components/TrustBadges";
 import { getAvailableSlots } from "@/lib/google-calendar";
-import { servicePackages } from "@/lib/pricing";
+import { readServices } from "@/lib/service-store";
 
 export const dynamic = "force-dynamic";
 
@@ -23,12 +23,13 @@ export const metadata: Metadata = {
 
 export default async function HomePage() {
   const availableSlots = await getAvailableSlots();
+  const services = await readServices();
 
   return (
     <>
       <CampaignOffers compact />
 
-      <Hero availableSlots={availableSlots} />
+      <Hero availableSlots={availableSlots} services={services} />
 
       <section className="section-spacing bg-white">
         <div className="container-padded">
@@ -43,7 +44,7 @@ export default async function HomePage() {
             </Link>
           </div>
           <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-            {servicePackages.slice(0, 3).map((service) => (
+            {services.filter((service) => service.bookable).slice(0, 3).map((service) => (
               <ServiceCard key={service.id} service={service} />
             ))}
           </div>

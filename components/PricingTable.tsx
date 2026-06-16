@@ -1,7 +1,18 @@
 import Link from "next/link";
-import { bookingExtras, formatCurrency, servicePackages, vehicleTypes } from "@/lib/pricing";
+import {
+  bookingExtras,
+  formatCurrency,
+  servicePackages,
+  serviceCategories,
+  type ServicePackage,
+  vehicleTypes
+} from "@/lib/pricing";
 
-export function PricingTable() {
+type PricingTableProps = {
+  services?: ServicePackage[];
+};
+
+export function PricingTable({ services = [...servicePackages] }: PricingTableProps) {
   return (
     <div className="grid gap-6 lg:grid-cols-[1fr_0.8fr]">
       <div className="surface overflow-hidden">
@@ -10,33 +21,57 @@ export function PricingTable() {
           <span className="text-forest-300">Pris från</span>
         </div>
         <div className="divide-y divide-forest-100">
-          {servicePackages.map((service) => (
-            <div
-              key={service.id}
-              className="grid gap-3 px-4 py-5 sm:grid-cols-[1fr_auto] sm:items-center sm:px-6"
-            >
-              <div>
-                <p className="font-black text-forest-950">{service.name}</p>
-                <p className="mt-1 text-sm leading-6 text-slate-600">
-                  {service.description}
-                </p>
-                <p className="mt-2 text-xs font-bold uppercase tracking-[0.12em] text-forest-600">
-                  {service.duration}
-                </p>
+          {serviceCategories.map((category) => {
+            const categoryServices = services.filter(
+              (service) => service.category === category
+            );
+
+            if (categoryServices.length === 0) {
+              return null;
+            }
+
+            return (
+              <div key={category}>
+                <div className="bg-polish-mist px-4 py-3 text-xs font-black uppercase tracking-[0.14em] text-forest-700 sm:px-6">
+                  {category}
+                </div>
+                {categoryServices.map((service) => (
+                  <div
+                    key={service.id}
+                    className="grid gap-3 px-4 py-5 sm:grid-cols-[1fr_auto] sm:items-center sm:px-6"
+                  >
+                    <div>
+                      <p className="font-black text-forest-950">{service.name}</p>
+                      <p className="mt-1 text-sm leading-6 text-slate-600">
+                        {service.description}
+                      </p>
+                      <p className="mt-2 text-xs font-bold uppercase tracking-[0.12em] text-forest-600">
+                        {service.duration}
+                      </p>
+                    </div>
+                    <div className="flex items-center justify-between gap-4 sm:block sm:text-right">
+                      <p className="text-xl font-black text-forest-950">
+                        {service.originalPrice ? (
+                          <span className="mr-2 text-sm text-slate-400 line-through">
+                            {formatCurrency(service.originalPrice)}
+                          </span>
+                        ) : null}
+                        {formatCurrency(service.basePrice)}
+                      </p>
+                      <Link
+                        href={
+                          service.bookable ? `/booking?service=${service.id}` : "/contact"
+                        }
+                        className="mt-2 inline-flex rounded-md bg-forest-300 px-3 py-2 text-sm font-black text-forest-950 hover:bg-forest-400"
+                      >
+                        {service.bookable ? "Boka" : "Fråga"}
+                      </Link>
+                    </div>
+                  </div>
+                ))}
               </div>
-              <div className="flex items-center justify-between gap-4 sm:block sm:text-right">
-                <p className="text-xl font-black text-forest-950">
-                  {formatCurrency(service.basePrice)}
-                </p>
-                <Link
-                  href={`/booking?service=${service.id}`}
-                  className="mt-2 inline-flex rounded-md bg-forest-300 px-3 py-2 text-sm font-black text-forest-950 hover:bg-forest-400"
-                >
-                  Boka
-                </Link>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 

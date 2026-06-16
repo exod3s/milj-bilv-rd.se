@@ -6,7 +6,7 @@ import { formatCurrency } from "@/lib/pricing";
 
 export const campaignOffers = [
   {
-    id: "deluxe-machine-fix",
+    id: "deluxe-maskinvaxning",
     sectionLabel: "Kampanj",
     name: "Deluxe med maskinfixning",
     title: "Deluxe med maskinfixning",
