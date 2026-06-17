@@ -7,6 +7,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   const body = (await request.json()) as {
+    slot?: number;
     title?: string;
     category?: string;
     beforeImage?: string;
@@ -24,6 +25,7 @@ export async function POST(request: Request) {
 
   const item = await addGalleryItem({
     title: body.title,
+    slot: body.slot,
     category: body.category,
     beforeImage: body.beforeImage ?? "",
     afterImage: body.afterImage ?? "",
@@ -39,6 +41,7 @@ export async function PATCH(request: Request) {
     id?: string;
     patch?: {
       title?: string;
+      slot?: number;
       category?: string;
       beforeImage?: string;
       afterImage?: string;

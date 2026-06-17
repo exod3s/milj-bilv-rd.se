@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useState } from "react";
 import { Loader2, Upload } from "lucide-react";
 import type { GalleryItem } from "@/lib/gallery-store";
+import { galleryItems } from "@/components/GalleryPreview";
 
 async function uploadFile(file: File) {
   const formData = new FormData();
@@ -31,9 +32,12 @@ export function AdminGalleryManager({
   initialItems: GalleryItem[];
 }) {
   const [items, setItems] = useState(initialItems);
-  const [title, setTitle] = useState("");
-  const [category, setCategory] = useState("Rekondpaket");
-  const [description, setDescription] = useState("");
+  const [slot, setSlot] = useState(1);
+  const [title, setTitle] = useState(galleryItems[0]?.title ?? "");
+  const [category, setCategory] = useState(galleryItems[0]?.category ?? "");
+  const [description, setDescription] = useState(
+    galleryItems[0]?.description ?? ""
+  );
   const [beforeFile, setBeforeFile] = useState<File | null>(null);
   const [afterFile, setAfterFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
@@ -51,6 +55,7 @@ export function AdminGalleryManager({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          slot,
           title,
           category,
           description,
@@ -69,12 +74,15 @@ export function AdminGalleryManager({
         throw new Error(result.error ?? "Kunde inte spara galleripost");
       }
 
-      setItems((current) => [result.item!, ...current]);
+      setItems((current) => [
+        result.item!,
+        ...current.filter((item) => item.id !== result.item?.id)
+      ]);
       setTitle("");
       setDescription("");
       setBeforeFile(null);
       setAfterFile(null);
-      setMessage("Galleriposten sparades.");
+      setMessage(`Box ${slot} uppdaterades.`);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Kunde inte spara");
     } finally {
@@ -107,8 +115,37 @@ export function AdminGalleryManager({
     <div className="grid gap-6 lg:grid-cols-[0.8fr_1.2fr]">
       <form onSubmit={createItem} className="surface h-fit p-5">
         <h2 className="text-xl font-black text-forest-950">
-          Ny före/efter-post
+          Uppdatera galleribox
         </h2>
+        <p className="mt-2 text-sm leading-6 text-slate-600">
+          Välj vilken av de tre publika före/efter-boxarna som ska ersättas.
+        </p>
+        <label className="mt-4 block">
+          <span className="field-label">Välj box</span>
+          <select
+            className="field-input mt-2"
+            value={slot}
+            onChange={(event) => {
+              const nextSlot = Number(event.target.value);
+              setSlot(nextSlot);
+              const existing =
+                items.find((item) => item.slot === nextSlot) ??
+                galleryItems.find((item) => item.slot === nextSlot);
+
+              if (existing) {
+                setTitle(existing.title);
+                setCategory(existing.category);
+                setDescription(existing.description ?? "");
+              }
+            }}
+          >
+            {galleryItems.map((item) => (
+              <option key={item.slot} value={item.slot}>
+                Box {item.slot}: {item.title}
+              </option>
+            ))}
+          </select>
+        </label>
         <label className="mt-4 block">
           <span className="field-label">Titel</span>
           <input
@@ -164,11 +201,26 @@ export function AdminGalleryManager({
       </form>
 
       <div className="grid gap-4">
-        {items.length === 0 ? (
-          <div className="surface p-6 text-slate-600">Inga galleribilder ännu.</div>
-        ) : null}
-        {items.map((item) => (
+        {galleryItems.map((fallback) => {
+          const item = items.find((entry) => entry.slot === fallback.slot) ?? {
+            id: `fallback-${fallback.slot}`,
+            slot: fallback.slot,
+            title: fallback.title,
+            category: fallback.category,
+            beforeImage: fallback.beforeImage,
+            afterImage: fallback.afterImage,
+            description:
+              fallback.description ??
+              "Standardbild. Ladda upp nya före/efterbilder för att ersätta denna box.",
+            published: true,
+            createdAt: ""
+          };
+
+          return (
           <article key={item.id} className="surface overflow-hidden">
+            <div className="bg-forest-950 px-5 py-3 text-sm font-black text-white">
+              Box {item.slot}
+            </div>
             <div className="grid sm:grid-cols-2">
               {[item.beforeImage, item.afterImage].map((image, index) => (
                 <div key={`${item.id}-${index}`} className="relative aspect-video bg-slate-200">
@@ -199,13 +251,15 @@ export function AdminGalleryManager({
                   className="button-secondary"
                   type="button"
                   onClick={() => togglePublished(item)}
+                  disabled={item.id.startsWith("fallback-")}
                 >
                   {item.published ? "Avpublicera" : "Publicera"}
                 </button>
               </div>
             </div>
           </article>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

@@ -4,6 +4,7 @@ import { ensureDatabaseSchema, getSql, hasDatabase } from "@/lib/db";
 
 export type GalleryItem = {
   id: string;
+  slot?: number;
   title: string;
   category: string;
   beforeImage: string;
@@ -66,6 +67,14 @@ export async function addGalleryItem(
   item: Omit<GalleryItem, "id" | "createdAt">
 ) {
   const items = await readGallery();
+  const existingSlotItem = item.slot
+    ? items.find((entry) => entry.slot === item.slot)
+    : undefined;
+
+  if (existingSlotItem) {
+    return updateGalleryItem(existingSlotItem.id, item);
+  }
+
   const galleryItem: GalleryItem = {
     ...item,
     id: crypto.randomUUID(),

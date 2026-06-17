@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 
 export type GalleryPreviewItem = {
+  slot?: number;
   title: string;
   category: string;
   beforeImage: string;
@@ -12,6 +13,7 @@ export type GalleryPreviewItem = {
 
 export const galleryItems: GalleryPreviewItem[] = [
   {
+    slot: 1,
     title: "Lacklyft efter polering",
     category: "Polering",
     beforeImage:
@@ -20,6 +22,7 @@ export const galleryItems: GalleryPreviewItem[] = [
       "https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=900&q=80"
   },
   {
+    slot: 2,
     title: "Fräsch kupé efter invändig rekond",
     category: "Invändig rengöring",
     beforeImage:
@@ -28,6 +31,7 @@ export const galleryItems: GalleryPreviewItem[] = [
       "https://images.unsplash.com/photo-1552519507-da3b142c6e3d?auto=format&fit=crop&w=900&q=80"
   },
   {
+    slot: 3,
     title: "Skyddad finish efter lackskydd",
     category: "Lackskydd",
     beforeImage:
@@ -47,7 +51,17 @@ export function GalleryPreview({
   items: customItems
 }: GalleryPreviewProps) {
   const sourceItems = customItems && customItems.length > 0 ? customItems : galleryItems;
-  const items = showAll ? sourceItems : sourceItems.slice(0, 3);
+  const customBySlot = new Map(
+    (customItems ?? [])
+      .filter((item) => item.slot)
+      .map((item) => [item.slot, item])
+  );
+  const mergedSlots = galleryItems.map(
+    (fallback) => customBySlot.get(fallback.slot) ?? fallback
+  );
+  const items = showAll
+    ? mergedSlots
+    : (customItems && customItems.length > 0 ? sourceItems : galleryItems).slice(0, 3);
 
   return (
     <div>

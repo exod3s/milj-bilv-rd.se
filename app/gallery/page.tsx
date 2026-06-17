@@ -16,6 +16,7 @@ export default async function GalleryPage() {
   const galleryItems = (await readGallery())
     .filter((item) => item.published)
     .map((item) => ({
+      slot: item.slot,
       title: item.title,
       category: item.category,
       beforeImage: item.beforeImage,
