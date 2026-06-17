@@ -356,9 +356,9 @@ export function BookingForm({
   }
 
   return (
-    <div className={clsx("surface overflow-hidden", isHero && "shadow-none")}>
-      <div className={clsx("border-b border-forest-100 bg-white", isHero ? "p-3" : "p-4 sm:p-6")}>
-        <div className="flex flex-wrap gap-2">
+    <div className={clsx("surface w-full min-w-0 overflow-hidden", isHero && "shadow-none")}>
+      <div className={clsx("border-b border-forest-100 bg-white", isHero ? "p-2 sm:p-3" : "p-4 sm:p-6")}>
+        <div className="flex max-w-full gap-2 overflow-x-auto pb-1">
           {steps.map((item, index) => {
             const Icon = item.icon;
 
@@ -373,7 +373,7 @@ export function BookingForm({
                   }
                 }}
                 className={clsx(
-                  "inline-flex items-center gap-2 rounded-md px-3 py-2 text-xs font-black transition",
+                  "inline-flex shrink-0 items-center gap-2 rounded-md px-3 py-2 text-xs font-black transition",
                   index === step
                     ? "bg-forest-950 text-white"
                     : index < step
@@ -394,10 +394,10 @@ export function BookingForm({
       <div
         className={clsx(
           "grid",
-          isHero ? "gap-4 p-3" : "gap-8 p-4 sm:p-6 lg:grid-cols-[1fr_20rem]"
+          isHero ? "min-w-0 gap-4 p-2 sm:p-3" : "min-w-0 gap-8 p-4 sm:p-6 lg:grid-cols-[minmax(0,1fr)_20rem]"
         )}
       >
-        <div>
+        <div className="min-w-0">
           {step === 0 ? (
             <StepShell
               title="Välj servicepaket"
@@ -929,7 +929,7 @@ function PackageAccordionCard({
       <button
         type="button"
         onClick={onClick}
-        className="flex w-full items-center gap-3 text-left"
+        className="flex w-full min-w-0 items-center gap-3 text-left"
         aria-expanded={active}
       >
         <span
@@ -941,9 +941,11 @@ function PackageAccordionCard({
           <Icon size={22} />
         </span>
         <span className="min-w-0 flex-1">
-          <span className="flex flex-wrap items-center justify-between gap-2">
-            <span className="font-black text-forest-950">{service.name}</span>
-            <span className="font-black text-forest-950">
+          <span className="grid gap-1 sm:flex sm:flex-wrap sm:items-center sm:justify-between sm:gap-2">
+            <span className="min-w-0 break-words font-black text-forest-950">
+              {service.name}
+            </span>
+            <span className="shrink-0 font-black text-forest-950">
               från {formatCurrency(service.basePrice)}
             </span>
           </span>

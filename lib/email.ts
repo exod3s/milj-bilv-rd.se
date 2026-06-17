@@ -6,61 +6,131 @@ import {
   getVehicleType
 } from "@/lib/pricing";
 import { businessInfo } from "@/lib/business-info";
+import { getResend, hasEmailProvider } from "@/lib/resend";
 
-export async function sendAdminBookingEmail(booking: BookingRecord) {
+type MailPayload = {
+  to: string | string[];
+  cc?: string[];
+  subject: string;
+  html: string;
+  text: string;
+};
+
+function emailFrom() {
+  return process.env.EMAIL_FROM ?? `${businessInfo.name} <onboarding@resend.dev>`;
+}
+
+async function sendMail(payload: MailPayload) {
+  if (!hasEmailProvider()) {
+    console.log("Email provider missing. Mock email only.", payload);
+    return { mocked: true };
+  }
+
+  const { data, error } = await getResend().emails.send({
+    from: emailFrom(),
+    to: payload.to,
+    cc: payload.cc,
+    subject: payload.subject,
+    html: payload.html,
+    text: payload.text
+  });
+
+  if (error) {
+    console.error("Resend email error", error);
+    throw new Error("E-post kunde inte skickas");
+  }
+
+  return data;
+}
+
+function bookingRows(booking: BookingRecord) {
   const service = getServicePackage(booking.serviceId);
   const vehicleType = getVehicleType(booking.vehicleTypeId);
   const extras = bookingExtras.filter((extra) => booking.extras.includes(extra.id));
 
-  // Future email integration:
-  // ADMIN_EMAIL receives booking notifications and EMAIL_FROM is the sender.
-  // Replace this mock with your provider of choice, for example Resend, Postmark or SendGrid.
-  console.log("Mock admin booking email", {
+  return {
+    service: booking.serviceName ?? service?.name ?? booking.serviceId,
+    vehicleType: booking.vehicleTypeName ?? vehicleType?.name ?? booking.vehicleTypeId,
+    extras: extras.length > 0 ? extras.map((extra) => extra.name).join(", ") : "Inga tillval",
+    duration: booking.duration ?? service?.duration ?? "-",
+    finalPrice: formatCurrency(booking.price.total)
+  };
+}
+
+function bookingHtml(title: string, intro: string, booking: BookingRecord) {
+  const rows = bookingRows(booking);
+
+  return `
+    <div style="font-family: Arial, sans-serif; color: #111; line-height: 1.6;">
+      <h1>${title}</h1>
+      <p>${intro}</p>
+      <table style="border-collapse: collapse; width: 100%; max-width: 620px;">
+        <tr><td><strong>Kund</strong></td><td>${booking.customer.name}</td></tr>
+        <tr><td><strong>Telefon</strong></td><td>${booking.customer.phone}</td></tr>
+        <tr><td><strong>E-post</strong></td><td>${booking.customer.email}</td></tr>
+        <tr><td><strong>Tjänst</strong></td><td>${rows.service}</td></tr>
+        <tr><td><strong>Fordon</strong></td><td>${rows.vehicleType}</td></tr>
+        <tr><td><strong>Registreringsnummer</strong></td><td>${booking.customer.licensePlate}</td></tr>
+        <tr><td><strong>Tillval</strong></td><td>${rows.extras}</td></tr>
+        <tr><td><strong>Varaktighet</strong></td><td>${rows.duration}</td></tr>
+        <tr><td><strong>Datum/tid</strong></td><td>${booking.date} kl. ${booking.time}</td></tr>
+        <tr><td><strong>Slutpris</strong></td><td>${rows.finalPrice}</td></tr>
+      </table>
+      ${booking.customer.message ? `<p><strong>Meddelande:</strong> ${booking.customer.message}</p>` : ""}
+      <p>${businessInfo.name}<br>${businessInfo.address}<br>${businessInfo.phone} · ${businessInfo.secondaryPhone}<br>${businessInfo.email}</p>
+    </div>
+  `;
+}
+
+function bookingText(title: string, intro: string, booking: BookingRecord) {
+  const rows = bookingRows(booking);
+
+  return `${title}
+
+${intro}
+
+Kund: ${booking.customer.name}
+Telefon: ${booking.customer.phone}
+E-post: ${booking.customer.email}
+Tjänst: ${rows.service}
+Fordon: ${rows.vehicleType}
+Registreringsnummer: ${booking.customer.licensePlate}
+Tillval: ${rows.extras}
+Varaktighet: ${rows.duration}
+Datum/tid: ${booking.date} kl. ${booking.time}
+Slutpris: ${rows.finalPrice}
+${booking.customer.message ? `Meddelande: ${booking.customer.message}` : ""}
+
+${businessInfo.name}
+${businessInfo.address}
+${businessInfo.phone} · ${businessInfo.secondaryPhone}
+${businessInfo.email}`;
+}
+
+export async function sendAdminBookingEmail(booking: BookingRecord) {
+  await sendMail({
     to: process.env.ADMIN_EMAIL ?? businessInfo.emailAscii,
     cc: [businessInfo.bookingCopyEmail],
-    from: process.env.EMAIL_FROM ?? businessInfo.emailAscii,
     subject: `Ny bokning: ${booking.customer.name}`,
-    customerName: booking.customer.name,
-    phone: booking.customer.phone,
-    email: booking.customer.email,
-    servicePackage: booking.serviceName ?? service?.name ?? booking.serviceId,
-    vehicleType: booking.vehicleTypeName ?? vehicleType?.name ?? booking.vehicleTypeId,
-    licensePlate: booking.customer.licensePlate,
-    extras: extras.length > 0 ? extras.map((extra) => extra.name) : ["Inga tillval"],
-    duration: booking.duration ?? service?.duration ?? "-",
-    finalPrice: formatCurrency(booking.price.total),
-    date: booking.date,
-    time: booking.time,
-    message: booking.customer.message ?? ""
+    html: bookingHtml("Ny bokning", "En ny bokning har kommit in.", booking),
+    text: bookingText("Ny bokning", "En ny bokning har kommit in.", booking)
   });
 }
 
 export async function sendCustomerConfirmationEmail(booking: BookingRecord) {
-  const service = getServicePackage(booking.serviceId);
-  const vehicleType = getVehicleType(booking.vehicleTypeId);
-  const extras = bookingExtras.filter((extra) => booking.extras.includes(extra.id));
-
-  console.log("Mock customer confirmation email", {
+  await sendMail({
     to: booking.customer.email,
-    from: process.env.EMAIL_FROM ?? businessInfo.emailAscii,
     subject: `Bokningsbekräftelse från ${businessInfo.name}`,
-    confirmation: {
-      service: booking.serviceName ?? service?.name ?? booking.serviceId,
-      date: booking.date,
-      time: booking.time,
-      vehicleType: booking.vehicleTypeName ?? vehicleType?.name ?? booking.vehicleTypeId,
-      licensePlate: booking.customer.licensePlate,
-      extras: extras.length > 0 ? extras.map((extra) => extra.name) : ["Inga tillval"],
-      duration: booking.duration ?? service?.duration ?? "-",
-      finalPrice: formatCurrency(booking.price.total),
-      contact: {
-        phone: businessInfo.phone,
-        secondaryPhone: businessInfo.secondaryPhone,
-        email: businessInfo.email,
-        emailAscii: businessInfo.emailAscii,
-        address: businessInfo.address
-      }
-    }
+    html: bookingHtml(
+      "Bokningsbekräftelse",
+      "Tack! Vi har tagit emot din bokning.",
+      booking
+    ),
+    text: bookingText(
+      "Bokningsbekräftelse",
+      "Tack! Vi har tagit emot din bokning.",
+      booking
+    )
   });
 }
 
@@ -68,8 +138,6 @@ export async function sendCustomerStatusEmail(
   booking: BookingRecord,
   status: BookingStatus
 ) {
-  const service = getServicePackage(booking.serviceId);
-  const vehicleType = getVehicleType(booking.vehicleTypeId);
   const statusMessages: Partial<Record<BookingStatus, {
     subject: string;
     message: string;
@@ -100,26 +168,10 @@ export async function sendCustomerStatusEmail(
     return;
   }
 
-  console.log("Mock customer status email", {
+  await sendMail({
     to: booking.customer.email,
-    from: process.env.EMAIL_FROM ?? businessInfo.emailAscii,
     subject: statusMessage.subject,
-    message: statusMessage.message,
-    booking: {
-      service: booking.serviceName ?? service?.name ?? booking.serviceId,
-      date: booking.date,
-      time: booking.time,
-      vehicleType: booking.vehicleTypeName ?? vehicleType?.name ?? booking.vehicleTypeId,
-      licensePlate: booking.customer.licensePlate,
-      duration: booking.duration ?? service?.duration ?? "-",
-      finalPrice: formatCurrency(booking.price.total),
-      contact: {
-        phone: businessInfo.phone,
-        secondaryPhone: businessInfo.secondaryPhone,
-        email: businessInfo.email,
-        emailAscii: businessInfo.emailAscii,
-        address: businessInfo.address
-      }
-    }
+    html: bookingHtml(statusMessage.subject, statusMessage.message, booking),
+    text: bookingText(statusMessage.subject, statusMessage.message, booking)
   });
 }

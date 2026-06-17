@@ -26,24 +26,26 @@ export function Hero({ availableSlots, services }: HeroProps) {
         <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-forest-950 to-transparent" />
       </div>
 
-      <div className="container-padded relative grid min-h-[calc(100vh-4rem)] items-center gap-10 py-16 lg:grid-cols-[0.95fr_1.05fr] lg:py-20">
-        <div className="max-w-3xl">
-          <div className="mb-5 inline-flex items-center gap-2 rounded-md bg-forest-300 px-3 py-2 text-sm font-black text-forest-950 shadow-soft">
-            <Sparkles size={16} />
-            Premium bilvård i Örnsköldsvik
+      <div className="container-padded relative grid w-full min-w-0 items-center gap-10 py-12 sm:py-16 lg:min-h-[calc(100vh-4rem)] lg:grid-cols-[0.95fr_1.05fr] lg:py-20">
+        <div className="min-w-0 max-w-3xl">
+          <div className="mb-5 flex flex-wrap gap-3">
+            <div className="inline-flex max-w-full items-center gap-2 rounded-md bg-forest-300 px-3 py-2 text-xs font-black text-forest-950 shadow-soft sm:text-sm">
+              <Sparkles size={16} className="shrink-0" />
+              <span className="min-w-0">Premium bilvård i Örnsköldsvik</span>
+            </div>
+            <div className="inline-flex max-w-full flex-wrap items-center gap-2 rounded-md border border-white/20 bg-white/12 px-3 py-2 text-xs font-black text-white backdrop-blur sm:gap-3 sm:px-4 sm:py-3 sm:text-sm">
+              <span className="rounded bg-white px-2 py-1 text-xs font-black text-slate-700">
+                Google
+              </span>
+              <span className="flex shrink-0 items-center gap-1 text-forest-300">
+                {Array.from({ length: 5 }).map((_, index) => (
+                  <Star key={index} size={14} fill="currentColor" />
+                ))}
+              </span>
+              <span>4,9/5</span>
+            </div>
           </div>
-          <div className="mb-5 inline-flex items-center gap-3 rounded-md border border-white/20 bg-white/12 px-4 py-3 text-sm font-black text-white backdrop-blur">
-            <span className="rounded bg-white px-2 py-1 text-xs font-black text-slate-700">
-              Google
-            </span>
-            <span className="flex items-center gap-1 text-forest-300">
-              {Array.from({ length: 5 }).map((_, index) => (
-                <Star key={index} size={16} fill="currentColor" />
-              ))}
-            </span>
-            <span>4,9/5 i kundbetyg</span>
-          </div>
-          <h1 className="text-4xl font-black leading-tight tracking-normal sm:text-5xl lg:text-6xl">
+          <h1 className="max-w-full text-3xl font-black leading-tight tracking-normal sm:text-5xl lg:text-6xl">
             Rekond, biltvätt och polering med renare känsla.
           </h1>
           <p className="mt-5 max-w-2xl text-base leading-8 text-forest-50 sm:text-lg">
@@ -52,10 +54,10 @@ export function Hero({ availableSlots, services }: HeroProps) {
             tydliga priser.
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-            <Link href="/booking" className="button-primary">
+            <Link href="/booking" className="button-primary w-full sm:w-auto">
               Boka nu
             </Link>
-            <Link href="/prices" className="button-secondary border-white bg-white text-forest-950 hover:bg-forest-300 hover:text-forest-950">
+            <Link href="/prices" className="button-secondary w-full border-white bg-white text-forest-950 hover:bg-forest-300 hover:text-forest-950 sm:w-auto">
               Se priser
             </Link>
           </div>
@@ -71,7 +73,7 @@ export function Hero({ availableSlots, services }: HeroProps) {
           </div>
         </div>
 
-        <div className="rounded-lg border border-white/20 bg-white p-3 text-forest-950 shadow-soft">
+        <div className="w-full min-w-0 max-w-full rounded-lg border border-white/20 bg-white p-2 text-forest-950 shadow-soft sm:p-3">
           <div className="mb-3 rounded-md bg-forest-950 px-4 py-3 text-white">
             <p className="text-xs font-black uppercase tracking-[0.14em] text-forest-300">
               Boka direkt
