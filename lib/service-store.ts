@@ -1,5 +1,6 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { ensureDatabaseSchema, getSql, hasDatabase } from "@/lib/db";
 import type { ServicePackage } from "@/lib/pricing";
 import { servicePackages } from "@/lib/pricing";
 
@@ -11,6 +12,25 @@ const removedServiceIds = new Set([
 ]);
 
 export async function readServices(): Promise<ServicePackage[]> {
+  if (hasDatabase()) {
+    await ensureDatabaseSchema();
+    const sql = getSql();
+    const rows = await sql`
+      SELECT data
+      FROM services
+      ORDER BY COALESCE((data->>'category'), ''), COALESCE((data->>'name'), '')
+    ` as { data: ServicePackage }[];
+
+    if (rows.length === 0) {
+      await writeServices([...servicePackages]);
+      return [...servicePackages];
+    }
+
+    return rows
+      .map((row) => row.data)
+      .filter((service) => !removedServiceIds.has(service.id));
+  }
+
   try {
     const file = await readFile(servicesFile, "utf8");
     const services = JSON.parse(file) as ServicePackage[];
@@ -21,6 +41,27 @@ export async function readServices(): Promise<ServicePackage[]> {
 }
 
 export async function writeServices(services: ServicePackage[]) {
+  if (hasDatabase()) {
+    await ensureDatabaseSchema();
+    const sql = getSql();
+    const cleanServices = services.filter(
+      (service) => !removedServiceIds.has(service.id)
+    );
+
+    await sql`DELETE FROM services`;
+
+    for (const service of cleanServices) {
+      await sql`
+        INSERT INTO services (id, data, updated_at)
+        VALUES (${service.id}, ${JSON.stringify(service)}::jsonb, NOW())
+        ON CONFLICT (id)
+        DO UPDATE SET data = EXCLUDED.data, updated_at = NOW()
+      `;
+    }
+
+    return;
+  }
+
   await mkdir(path.dirname(servicesFile), { recursive: true });
   await writeFile(servicesFile, JSON.stringify(services, null, 2), "utf8");
 }
