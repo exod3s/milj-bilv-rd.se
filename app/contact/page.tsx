@@ -31,15 +31,18 @@ export default function ContactPage() {
                   <MapPin size={18} className="mt-0.5 shrink-0 text-forest-700" />
                   {businessInfo.address}
                 </p>
+                {businessInfo.phones.map((phone) => (
+                  <a
+                    key={phone}
+                    href={`tel:${phone.replaceAll(" ", "")}`}
+                    className="flex gap-3 hover:text-forest-800"
+                  >
+                    <Phone size={18} className="mt-0.5 shrink-0 text-forest-700" />
+                    {phone}
+                  </a>
+                ))}
                 <a
-                  href={`tel:${businessInfo.phone.replaceAll(" ", "")}`}
-                  className="flex gap-3 hover:text-forest-800"
-                >
-                  <Phone size={18} className="mt-0.5 shrink-0 text-forest-700" />
-                  {businessInfo.phone}
-                </a>
-                <a
-                  href={`mailto:${businessInfo.email}`}
+                  href={`mailto:${businessInfo.emailAscii}`}
                   className="flex gap-3 hover:text-forest-800"
                 >
                   <Mail size={18} className="mt-0.5 shrink-0 text-forest-700" />

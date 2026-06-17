@@ -107,7 +107,9 @@ export default async function AdminPage() {
         <div className="mt-4 grid gap-4 text-sm md:grid-cols-3">
           <div>
             <p className="font-black text-forest-700">Telefon</p>
-            <p className="mt-1 text-slate-700">{businessInfo.phone}</p>
+            <p className="mt-1 text-slate-700">
+              {businessInfo.phones.join(" · ")}
+            </p>
           </div>
           <div>
             <p className="font-black text-forest-700">E-post</p>

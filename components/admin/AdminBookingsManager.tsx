@@ -5,11 +5,11 @@ import { bookingStatuses, type BookingRecord, type BookingStatus } from "@/lib/b
 import { formatCurrency } from "@/lib/pricing";
 
 const statusLabels: Record<BookingStatus, string> = {
-  new: "New",
-  confirmed: "Confirmed",
-  "in-progress": "In progress",
-  completed: "Completed",
-  cancelled: "Cancelled"
+  new: "Ny",
+  confirmed: "Bekräftad",
+  "in-progress": "Intagen för rengöring",
+  completed: "Klar",
+  cancelled: "Avbokad"
 };
 
 export function AdminBookingsManager({
@@ -64,7 +64,8 @@ export function AdminBookingsManager({
                 "Tid",
                 "Pris",
                 "Tillval",
-                "Status"
+                "Status",
+                "Snabbåtgärder"
               ].map((heading) => (
                 <th key={heading} className="px-4 py-3 font-black">
                   {heading}
@@ -75,7 +76,7 @@ export function AdminBookingsManager({
           <tbody className="divide-y divide-black/10 bg-white">
             {bookings.length === 0 ? (
               <tr>
-                <td className="px-4 py-8 text-slate-600" colSpan={7}>
+                <td className="px-4 py-8 text-slate-600" colSpan={8}>
                   Inga bokningar ännu.
                 </td>
               </tr>
@@ -127,6 +128,24 @@ export function AdminBookingsManager({
                       </option>
                     ))}
                   </select>
+                </td>
+                <td className="px-4 py-4">
+                  <div className="flex min-w-56 flex-col gap-2">
+                    <button
+                      type="button"
+                      className="rounded-md bg-forest-950 px-3 py-2 text-xs font-black text-white transition hover:bg-forest-800"
+                      onClick={() => changeStatus(booking.id, "in-progress")}
+                    >
+                      Bilen är intagen för rengöring
+                    </button>
+                    <button
+                      type="button"
+                      className="rounded-md bg-forest-300 px-3 py-2 text-xs font-black text-forest-950 transition hover:bg-forest-400"
+                      onClick={() => changeStatus(booking.id, "completed")}
+                    >
+                      Bilen är klar
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}

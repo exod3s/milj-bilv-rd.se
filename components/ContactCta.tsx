@@ -29,6 +29,13 @@ export function ContactCta() {
             <Phone size={16} />
             Ring {businessInfo.phone}
           </a>
+          <a
+            href={`tel:${businessInfo.secondaryPhone.replaceAll(" ", "")}`}
+            className="button-secondary border-white bg-white text-forest-950 hover:bg-forest-300 hover:text-forest-950"
+          >
+            <Phone size={16} />
+            Ring {businessInfo.secondaryPhone}
+          </a>
         </div>
       </div>
     </section>

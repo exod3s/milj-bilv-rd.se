@@ -60,15 +60,18 @@ export function Footer() {
               <MapPin size={16} className="mt-0.5 shrink-0" />
               {businessInfo.address}
             </p>
+            {businessInfo.phones.map((phone) => (
+              <a
+                key={phone}
+                href={`tel:${phone.replaceAll(" ", "")}`}
+                className="flex gap-2 transition hover:text-white"
+              >
+                <Phone size={16} className="mt-0.5 shrink-0" />
+                {phone}
+              </a>
+            ))}
             <a
-              href={`tel:${businessInfo.phone.replaceAll(" ", "")}`}
-              className="flex gap-2 transition hover:text-white"
-            >
-              <Phone size={16} className="mt-0.5 shrink-0" />
-              {businessInfo.phone}
-            </a>
-            <a
-              href={`mailto:${businessInfo.email}`}
+              href={`mailto:${businessInfo.emailAscii}`}
               className="flex gap-2 transition hover:text-white"
             >
               <Mail size={16} className="mt-0.5 shrink-0" />
