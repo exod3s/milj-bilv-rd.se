@@ -33,7 +33,7 @@ export const vehicleTypeIds = ["sedan", "kombi", "suv", "7-sits"] as const;
 
 export const extraIds = ["dog-hair"] as const;
 
-export type ServicePackageId = (typeof servicePackageIds)[number];
+export type ServicePackageId = string;
 export type VehicleTypeId = (typeof vehicleTypeIds)[number];
 export type ExtraId = (typeof extraIds)[number];
 
@@ -117,7 +117,7 @@ export type VehicleRegistrationInfo = {
 };
 
 export const bookingRequestSchema = z.object({
-  serviceId: z.enum(servicePackageIds),
+  serviceId: z.string().trim().min(2, "Service krävs"),
   vehicleTypeId: z.enum(vehicleTypeIds),
   extras: z.array(z.enum(extraIds)).default([]),
   pickupDropoff: z.boolean().default(false),

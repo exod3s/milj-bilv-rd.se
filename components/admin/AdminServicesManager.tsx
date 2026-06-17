@@ -1,26 +1,84 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2, Save, Upload } from "lucide-react";
+import { Loader2, Plus, Save, Trash2, Upload } from "lucide-react";
 import {
+  defaultVehicleAdjustments,
   serviceCategories,
   type ServiceCategory,
   type ServicePackage
 } from "@/lib/pricing";
+import type { VehicleTypeId } from "@/lib/booking-types";
 
 type Draft = ServicePackage & {
   highlightsText: string;
-  vehicleRulesText: string;
+  vehicleAdjustmentsDraft: Record<VehicleTypeId, string>;
+  vehicleContactPrice: Record<VehicleTypeId, boolean>;
 };
+
+const vehicleTypeIds: VehicleTypeId[] = ["sedan", "kombi", "suv", "7-sits"];
+const vehicleTypeLabels: Record<VehicleTypeId, string> = {
+  sedan: "Sedan",
+  kombi: "Kombi",
+  suv: "SUV",
+  "7-sits": "7-sits"
+};
+
+function slugify(value: string) {
+  return value
+    .toLowerCase()
+    .trim()
+    .replaceAll("å", "a")
+    .replaceAll("ä", "a")
+    .replaceAll("ö", "o")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+}
 
 function toDraft(service: ServicePackage): Draft {
   return {
     ...service,
     highlightsText: service.highlights.join(", "),
-    vehicleRulesText: service.vehicleAdjustments
-      ? JSON.stringify(service.vehicleAdjustments, null, 2)
-      : ""
+    vehicleAdjustmentsDraft: vehicleTypeIds.reduce(
+      (draft, id) => ({
+        ...draft,
+        [id]: String(
+          service.vehicleAdjustments?.[id] ??
+            defaultVehicleAdjustments[id]
+        )
+      }),
+      {} as Record<VehicleTypeId, string>
+    ),
+    vehicleContactPrice: vehicleTypeIds.reduce(
+      (draft, id) => ({
+        ...draft,
+        [id]: service.vehicleAdjustments?.[id] === null
+      }),
+      {} as Record<VehicleTypeId, boolean>
+    )
   };
+}
+
+async function readJsonResponse<T>(response: Response): Promise<T> {
+  const text = await response.text();
+
+  if (!text) {
+    throw new Error("Servern svarade utan data. Logga in igen och försök på nytt.");
+  }
+
+  return JSON.parse(text) as T;
+}
+
+function vehicleAdjustmentsFromDraft(service: Draft) {
+  return vehicleTypeIds.reduce(
+    (rules, id) => ({
+      ...rules,
+      [id]: service.vehicleContactPrice[id]
+        ? null
+        : Number(service.vehicleAdjustmentsDraft[id] || 0)
+    }),
+    {} as ServicePackage["vehicleAdjustments"]
+  );
 }
 
 export function AdminServicesManager({
@@ -41,14 +99,52 @@ export function AdminServicesManager({
     );
   }
 
+  function updateVehiclePrice(
+    id: string,
+    vehicleTypeId: VehicleTypeId,
+    value: string
+  ) {
+    setServices((current) =>
+      current.map((service) =>
+        service.id === id
+          ? {
+              ...service,
+              vehicleAdjustmentsDraft: {
+                ...service.vehicleAdjustmentsDraft,
+                [vehicleTypeId]: value
+              }
+            }
+          : service
+      )
+    );
+  }
+
+  function updateVehicleContactPrice(
+    id: string,
+    vehicleTypeId: VehicleTypeId,
+    checked: boolean
+  ) {
+    setServices((current) =>
+      current.map((service) =>
+        service.id === id
+          ? {
+              ...service,
+              vehicleContactPrice: {
+                ...service.vehicleContactPrice,
+                [vehicleTypeId]: checked
+              }
+            }
+          : service
+      )
+    );
+  }
+
   async function save(service: Draft) {
     setSavingId(service.id);
     setMessage("");
 
     try {
-      const vehicleAdjustments = service.vehicleRulesText.trim()
-        ? JSON.parse(service.vehicleRulesText)
-        : undefined;
+      const vehicleAdjustments = vehicleAdjustmentsFromDraft(service);
       const patch: Partial<ServicePackage> = {
         name: service.name,
         category: service.category,
@@ -76,11 +172,11 @@ export function AdminServicesManager({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: service.id, patch })
       });
-      const result = (await response.json()) as {
+      const result = await readJsonResponse<{
         ok: boolean;
         service?: ServicePackage;
         error?: string;
-      };
+      }>(response);
 
       if (!response.ok || !result.ok || !result.service) {
         throw new Error(result.error ?? "Kunde inte spara tjänsten");
@@ -99,6 +195,80 @@ export function AdminServicesManager({
     }
   }
 
+  async function addNewService() {
+    setMessage("");
+    const baseName = "Ny tjänst";
+    const id = `${slugify(baseName)}-${Date.now()}`;
+    const service: ServicePackage = {
+      id,
+      category: "Biltvättspaket",
+      name: baseName,
+      shortLabel: "Ny tjänst",
+      basePrice: 0,
+      duration: "1h",
+      durationMinutes: 60,
+      description: "Beskriv tjänsten här.",
+      highlights: ["Uppdatera innehåll"],
+      bookable: true,
+      vehicleAdjustments: { ...defaultVehicleAdjustments }
+    };
+
+    try {
+      const response = await fetch("/api/admin/services", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(service)
+      });
+      const result = await readJsonResponse<{
+        ok: boolean;
+        service?: ServicePackage;
+        error?: string;
+      }>(response);
+
+      if (!response.ok || !result.ok || !result.service) {
+        throw new Error(result.error ?? "Kunde inte skapa tjänsten");
+      }
+
+      setServices((current) => [toDraft(result.service!), ...current]);
+      setMessage("Ny tjänst skapades. Ändra text/pris och klicka Spara.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Kunde inte skapa tjänsten");
+    }
+  }
+
+  async function deleteExistingService(service: Draft) {
+    const confirmed = window.confirm(
+      `Ta bort "${service.name}"? Den försvinner från hemsidan och bokningen.`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setMessage("");
+
+    try {
+      const response = await fetch("/api/admin/services", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: service.id })
+      });
+      const result = await readJsonResponse<{
+        ok: boolean;
+        error?: string;
+      }>(response);
+
+      if (!response.ok || !result.ok) {
+        throw new Error(result.error ?? "Kunde inte ta bort tjänsten");
+      }
+
+      setServices((current) => current.filter((item) => item.id !== service.id));
+      setMessage(`${service.name} togs bort.`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Kunde inte ta bort tjänsten");
+    }
+  }
+
   async function uploadServiceImage(id: string, file: File | undefined) {
     if (!file) {
       return;
@@ -114,11 +284,11 @@ export function AdminServicesManager({
         method: "POST",
         body: formData
       });
-      const result = (await response.json()) as {
+      const result = await readJsonResponse<{
         ok: boolean;
         url?: string;
         error?: string;
-      };
+      }>(response);
 
       if (!response.ok || !result.ok || !result.url) {
         throw new Error(result.error ?? "Kunde inte ladda upp bilden");
@@ -135,6 +305,21 @@ export function AdminServicesManager({
 
   return (
     <div className="grid gap-5">
+      <div className="surface flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 className="text-xl font-black text-forest-950">
+            Hantera tjänster
+          </h2>
+          <p className="mt-1 text-sm text-slate-600">
+            Lägg till, redigera eller ta bort tjänster. Ändringar syns på
+            hemsidan och i bokningen direkt.
+          </p>
+        </div>
+        <button type="button" onClick={addNewService} className="button-primary">
+          <Plus size={16} />
+          Lägg till tjänst
+        </button>
+      </div>
       {message ? (
         <p className="rounded-md border border-forest-200 bg-white px-4 py-3 text-sm font-bold text-forest-800">
           {message}
@@ -287,18 +472,47 @@ export function AdminServicesManager({
           </div>
 
           <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_1fr_auto] lg:items-end">
-            <label>
-              <span className="field-label">
-                Fordonsregler JSON, lämna tomt för standard
-              </span>
-              <textarea
-                className="field-input mt-2 min-h-24 font-mono text-xs"
-                value={service.vehicleRulesText}
-                onChange={(event) =>
-                  update(service.id, { vehicleRulesText: event.target.value })
-                }
-              />
-            </label>
+            <div>
+              <span className="field-label">Fordonspriser</span>
+              <div className="mt-2 grid gap-3 rounded-md border border-black/10 bg-slate-50 p-4 sm:grid-cols-2">
+                {vehicleTypeIds.map((vehicleTypeId) => (
+                  <div key={vehicleTypeId} className="rounded-md bg-white p-3">
+                    <label className="block">
+                      <span className="text-xs font-black uppercase tracking-[0.12em] text-forest-700">
+                        {vehicleTypeLabels[vehicleTypeId]}
+                      </span>
+                      <input
+                        className="field-input mt-2"
+                        type="number"
+                        value={service.vehicleAdjustmentsDraft[vehicleTypeId]}
+                        disabled={service.vehicleContactPrice[vehicleTypeId]}
+                        onChange={(event) =>
+                          updateVehiclePrice(
+                            service.id,
+                            vehicleTypeId,
+                            event.target.value
+                          )
+                        }
+                      />
+                    </label>
+                    <label className="mt-2 inline-flex items-center gap-2 text-xs font-bold text-slate-600">
+                      <input
+                        type="checkbox"
+                        checked={service.vehicleContactPrice[vehicleTypeId]}
+                        onChange={(event) =>
+                          updateVehicleContactPrice(
+                            service.id,
+                            vehicleTypeId,
+                            event.target.checked
+                          )
+                        }
+                      />
+                      Kontakta oss för pris
+                    </label>
+                  </div>
+                ))}
+              </div>
+            </div>
             <div className="flex flex-wrap gap-4 rounded-md bg-slate-50 p-4">
               <label className="inline-flex items-center gap-2 text-sm font-bold">
                 <input
@@ -342,6 +556,16 @@ export function AdminServicesManager({
                 <Save size={16} />
               )}
               Spara
+            </button>
+          </div>
+          <div className="mt-4 flex justify-end">
+            <button
+              type="button"
+              className="inline-flex items-center gap-2 rounded-md border border-red-200 bg-red-50 px-4 py-2 text-sm font-black text-red-700 transition hover:bg-red-100"
+              onClick={() => deleteExistingService(service)}
+            >
+              <Trash2 size={16} />
+              Ta bort tjänst
             </button>
           </div>
         </section>

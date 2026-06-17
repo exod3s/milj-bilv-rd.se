@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
 import { BookingForm } from "@/components/BookingForm";
 import { PageHero } from "@/components/PageHero";
-import type { ServicePackageId } from "@/lib/booking-types";
-import { servicePackageIds } from "@/lib/booking-types";
 import { getAvailableSlots } from "@/lib/google-calendar";
 import { readServices } from "@/lib/service-store";
 
@@ -23,13 +21,12 @@ type BookingPageProps = {
 export default async function BookingPage({ searchParams }: BookingPageProps) {
   const params = searchParams ? await searchParams : {};
   const requestedService = params.service;
-  const initialServiceId = servicePackageIds.includes(
-    requestedService as ServicePackageId
-  )
-    ? (requestedService as ServicePackageId)
-    : undefined;
   const availableSlots = await getAvailableSlots();
   const services = await readServices();
+  const initialServiceId =
+    requestedService && services.some((service) => service.id === requestedService)
+      ? requestedService
+      : undefined;
 
   return (
     <>
