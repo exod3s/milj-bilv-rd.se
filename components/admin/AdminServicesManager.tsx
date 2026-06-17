@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2, Save } from "lucide-react";
+import { Loader2, Save, Upload } from "lucide-react";
 import {
   serviceCategories,
   type ServiceCategory,
@@ -30,6 +30,7 @@ export function AdminServicesManager({
 }) {
   const [services, setServices] = useState(() => initialServices.map(toDraft));
   const [savingId, setSavingId] = useState("");
+  const [uploadingId, setUploadingId] = useState("");
   const [message, setMessage] = useState("");
 
   function update(id: string, patch: Partial<Draft>) {
@@ -59,6 +60,7 @@ export function AdminServicesManager({
         duration: service.duration,
         durationMinutes: Number(service.durationMinutes),
         description: service.description,
+        image: service.image || undefined,
         highlights: service.highlightsText
           .split(",")
           .map((item) => item.trim())
@@ -94,6 +96,40 @@ export function AdminServicesManager({
       setMessage(error instanceof Error ? error.message : "Kunde inte spara");
     } finally {
       setSavingId("");
+    }
+  }
+
+  async function uploadServiceImage(id: string, file: File | undefined) {
+    if (!file) {
+      return;
+    }
+
+    setUploadingId(id);
+    setMessage("");
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const response = await fetch("/api/admin/uploads", {
+        method: "POST",
+        body: formData
+      });
+      const result = (await response.json()) as {
+        ok: boolean;
+        url?: string;
+        error?: string;
+      };
+
+      if (!response.ok || !result.ok || !result.url) {
+        throw new Error(result.error ?? "Kunde inte ladda upp bilden");
+      }
+
+      update(id, { image: result.url });
+      setMessage("Bilden laddades upp. Klicka Spara för att använda den publikt.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Kunde inte ladda upp bilden");
+    } finally {
+      setUploadingId("");
     }
   }
 
@@ -215,6 +251,38 @@ export function AdminServicesManager({
                   update(service.id, { highlightsText: event.target.value })
                 }
               />
+            </label>
+          </div>
+
+          <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_0.7fr]">
+            <label>
+              <span className="field-label">Bild-URL eller uppladdad bild</span>
+              <input
+                className="field-input mt-2"
+                value={service.image ?? ""}
+                onChange={(event) => update(service.id, { image: event.target.value })}
+                placeholder="/uploads/bild.jpg eller https://..."
+              />
+            </label>
+            <label>
+              <span className="field-label">Ladda upp tjänstebild</span>
+              <span className="mt-2 flex gap-2">
+                <input
+                  className="field-input"
+                  type="file"
+                  accept="image/*"
+                  onChange={(event) =>
+                    uploadServiceImage(service.id, event.target.files?.[0])
+                  }
+                />
+                <span className="inline-flex h-[46px] w-12 shrink-0 items-center justify-center rounded-md bg-forest-950 text-white">
+                  {uploadingId === service.id ? (
+                    <Loader2 size={17} className="animate-spin" />
+                  ) : (
+                    <Upload size={17} />
+                  )}
+                </span>
+              </span>
             </label>
           </div>
 

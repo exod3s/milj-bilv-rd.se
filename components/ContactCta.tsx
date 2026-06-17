@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Phone } from "lucide-react";
-import { businessInfo } from "@/lib/site";
+import { businessInfo } from "@/lib/business-info";
 
 export function ContactCta() {
   return (

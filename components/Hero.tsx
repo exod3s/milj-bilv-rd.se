@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { CheckCircle, Sparkles } from "lucide-react";
+import { CheckCircle, Sparkles, Star } from "lucide-react";
 import { BookingForm } from "@/components/BookingForm";
 import type { AvailableSlot } from "@/lib/booking-types";
 import type { ServicePackage } from "@/lib/pricing";
@@ -31,6 +31,17 @@ export function Hero({ availableSlots, services }: HeroProps) {
           <div className="mb-5 inline-flex items-center gap-2 rounded-md bg-forest-300 px-3 py-2 text-sm font-black text-forest-950 shadow-soft">
             <Sparkles size={16} />
             Premium bilvård i Örnsköldsvik
+          </div>
+          <div className="mb-5 inline-flex items-center gap-3 rounded-md border border-white/20 bg-white/12 px-4 py-3 text-sm font-black text-white backdrop-blur">
+            <span className="rounded bg-white px-2 py-1 text-xs font-black text-slate-700">
+              Google
+            </span>
+            <span className="flex items-center gap-1 text-forest-300">
+              {Array.from({ length: 5 }).map((_, index) => (
+                <Star key={index} size={16} fill="currentColor" />
+              ))}
+            </span>
+            <span>4,9/5 i kundbetyg</span>
           </div>
           <h1 className="text-4xl font-black leading-tight tracking-normal sm:text-5xl lg:text-6xl">
             Rekond, biltvätt och polering med renare känsla.

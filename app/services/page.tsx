@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ContactCta } from "@/components/ContactCta";
+import { GiftCardSection } from "@/components/GiftCardSection";
 import { PageHero } from "@/components/PageHero";
 import { SectionHeading } from "@/components/SectionHeading";
 import { ServiceCard } from "@/components/ServiceCard";
@@ -61,6 +62,8 @@ export default async function ServicesPage() {
           </div>
         </div>
       </section>
+
+      <GiftCardSection />
 
       <section className="section-spacing bg-polish-mist">
         <div className="container-padded">

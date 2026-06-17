@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ContactCta } from "@/components/ContactCta";
 import { CampaignOffers } from "@/components/CampaignOffers";
 import { GalleryPreview } from "@/components/GalleryPreview";
+import { GiftCardSection } from "@/components/GiftCardSection";
 import { Hero } from "@/components/Hero";
 import { PricingTable } from "@/components/PricingTable";
 import { PhotoMosaic } from "@/components/PhotoMosaic";
@@ -60,7 +61,7 @@ export default async function HomePage() {
             title="Tydliga priser innan du bokar."
             description="Baspriset visas direkt. I bokningen läggs fordonstillägg och tillval på automatiskt så att totalpriset blir tydligt."
           />
-          <PricingTable />
+          <PricingTable services={services} />
         </div>
       </section>
 
@@ -79,8 +80,8 @@ export default async function HomePage() {
         <div className="container-padded">
           <SectionHeading
             eyebrow="Google-recensioner"
-            title="Kundförtroende som kan kopplas till Google Places."
-            description="Just nu visas mockade recensioner. Komponenten är förberedd för riktig rating och recensioner från Google Places API."
+            title="Vad våra kunder säger"
+            description="Mockade recensioner visas tills Google Places API kopplas in. Komponenten är förberedd för riktig rating, namn och recensionstexter."
           />
           <ReviewsSection />
         </div>
@@ -98,6 +99,8 @@ export default async function HomePage() {
       </section>
 
       <CampaignOffers />
+
+      <GiftCardSection />
 
       <ContactCta />
     </>

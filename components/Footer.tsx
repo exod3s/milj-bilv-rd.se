@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { Leaf, Mail, MapPin, Phone } from "lucide-react";
 import { BrandLogo } from "@/components/BrandLogo";
-import { businessInfo, navItems } from "@/lib/site";
+import { businessInfo } from "@/lib/business-info";
+import { navItems } from "@/lib/site";
 
 export function Footer() {
   return (

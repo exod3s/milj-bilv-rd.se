@@ -28,6 +28,7 @@ export type ServicePackage = {
   durationMinutes: number;
   description: string;
   highlights: string[];
+  image?: string;
   bookable: boolean;
   isCampaign?: boolean;
   isGiftCard?: boolean;
@@ -46,6 +47,61 @@ const biltvattVehicleAdjustments: Record<VehicleTypeId, number> = {
   kombi: 0,
   suv: 250,
   "7-sits": 400
+};
+
+export const serviceFallbackImages: Record<string, string> = {
+  snabbtvatt:
+    "https://images.unsplash.com/photo-1607860108855-64acf2078ed9?auto=format&fit=crop&w=900&q=85",
+  "utvandig-handtvatt":
+    "https://images.unsplash.com/photo-1520340356584-f9917d1eea6f?auto=format&fit=crop&w=900&q=85",
+  "invandig-handtvatt":
+    "https://images.unsplash.com/photo-1507136566006-cfc505b114fc?auto=format&fit=crop&w=900&q=85",
+  "deluxe-tvatt":
+    "https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?auto=format&fit=crop&w=900&q=85",
+  "deluxe-maskinvaxning":
+    "https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=900&q=85",
+  "deluxe-motortvatt-invandig":
+    "https://images.unsplash.com/photo-1517524008697-84bbe3c3fd98?auto=format&fit=crop&w=900&q=85",
+  "bronz-1":
+    "https://images.unsplash.com/photo-1542362567-b07e54358753?auto=format&fit=crop&w=900&q=85",
+  "bronz-2":
+    "https://images.unsplash.com/photo-1493238792000-8113da705763?auto=format&fit=crop&w=900&q=85",
+  silver:
+    "https://images.unsplash.com/photo-1552519507-da3b142c6e3d?auto=format&fit=crop&w=900&q=85",
+  guld:
+    "https://images.unsplash.com/photo-1525609004556-c46c7d6cf023?auto=format&fit=crop&w=900&q=85",
+  platinum:
+    "https://images.unsplash.com/photo-1541899481282-d53bffe3c35d?auto=format&fit=crop&w=900&q=85",
+  diamant:
+    "https://images.unsplash.com/photo-1485291571150-772bcfc10da5?auto=format&fit=crop&w=900&q=85",
+  glasbehandling:
+    "https://images.unsplash.com/photo-1517524206127-48bbd363f3d7?auto=format&fit=crop&w=900&q=85",
+  motortvatt:
+    "https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?auto=format&fit=crop&w=900&q=85",
+  satesrengoring:
+    "https://images.unsplash.com/photo-1502877338535-766e1452684a?auto=format&fit=crop&w=900&q=85",
+  lyktpolering:
+    "https://images.unsplash.com/photo-1503736334956-4c8f8e92946d?auto=format&fit=crop&w=900&q=85",
+  "husbil-ut-tvatt":
+    "https://images.unsplash.com/photo-1545153996-5f6b899064bd?auto=format&fit=crop&w=900&q=85",
+  "husbil-deluxe":
+    "https://images.unsplash.com/photo-1523987355523-c7b5b0dd90a7?auto=format&fit=crop&w=900&q=85",
+  "husbil-polera":
+    "https://images.unsplash.com/photo-1511919884226-fd3cad34687c?auto=format&fit=crop&w=900&q=85",
+  dackbyte:
+    "https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=900&q=85",
+  dackhotell:
+    "https://images.unsplash.com/photo-1517524008697-84bbe3c3fd98?auto=format&fit=crop&w=900&q=85",
+  "summer-discount":
+    "https://images.unsplash.com/photo-1607860108855-64acf2078ed9?auto=format&fit=crop&w=900&q=85",
+  "deluxe-kort":
+    "https://images.unsplash.com/photo-1493238792000-8113da705763?auto=format&fit=crop&w=900&q=85",
+  "deluxe-maskinvaxning-kort":
+    "https://images.unsplash.com/photo-1517524008697-84bbe3c3fd98?auto=format&fit=crop&w=900&q=85",
+  "bronz-kort-1":
+    "https://images.unsplash.com/photo-1542362567-b07e54358753?auto=format&fit=crop&w=900&q=85",
+  "silver-kort":
+    "https://images.unsplash.com/photo-1552519507-da3b142c6e3d?auto=format&fit=crop&w=900&q=85"
 };
 
 export const servicePackages = [
@@ -119,13 +175,13 @@ export const servicePackages = [
   {
     id: "deluxe-motortvatt-invandig",
     category: "Biltvättspaket",
-    name: "Deluxe + motortvätt + invändig tvätt",
-    shortLabel: "Deluxe med motortvätt",
+    name: "Deluxe + motortvätt + invändig luktsanering",
+    shortLabel: "Deluxe med motortvätt och luktsanering",
     basePrice: 1500,
     duration: "3h",
     durationMinutes: 180,
-    description: "Deluxe-paket med motortvätt och invändig rengöring för en mer komplett behandling.",
-    highlights: ["Motortvätt", "Invändig tvätt", "Utvändig handtvätt", "Kontroll"],
+    description: "Deluxe-paket med motortvätt och invändig luktsanering för en mer komplett behandling.",
+    highlights: ["Motortvätt", "Invändig luktsanering", "Utvändig handtvätt", "Kontroll"],
     bookable: true,
     vehicleAdjustments: biltvattVehicleAdjustments
   },
@@ -307,42 +363,6 @@ export const servicePackages = [
     durationMinutes: 30,
     description: "Däckhotell för trygg och smidig förvaring.",
     highlights: ["Förvaring", "Kontroll", "Enkelt byte"],
-    bookable: true
-  },
-  {
-    id: "dackbyte-balansering",
-    category: "Däckverksamhet",
-    name: "Däckbyte + balansering",
-    shortLabel: "Byte och balansering",
-    basePrice: 550,
-    duration: "1h",
-    durationMinutes: 60,
-    description: "Däckbyte med balansering för en mjukare körning.",
-    highlights: ["Däckbyte", "Balansering", "Kontroll"],
-    bookable: true
-  },
-  {
-    id: "balansering",
-    category: "Däckverksamhet",
-    name: "Balansering",
-    shortLabel: "Hjulbalansering",
-    basePrice: 400,
-    duration: "30 min",
-    durationMinutes: 30,
-    description: "Balansering av hjul för att minska vibrationer.",
-    highlights: ["Balansering", "Kontroll", "Komfort"],
-    bookable: true
-  },
-  {
-    id: "dackomlaggning-balansering",
-    category: "Däckverksamhet",
-    name: "Däckomläggning + balansering",
-    shortLabel: "Omläggning och balansering",
-    basePrice: 900,
-    duration: "1h",
-    durationMinutes: 60,
-    description: "Däckomläggning med balansering.",
-    highlights: ["Omläggning", "Balansering", "Kontroll"],
     bookable: true
   },
   {

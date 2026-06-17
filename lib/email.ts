@@ -5,7 +5,7 @@ import {
   getServicePackage,
   getVehicleType
 } from "@/lib/pricing";
-import { businessInfo } from "@/lib/site";
+import { businessInfo } from "@/lib/business-info";
 
 export async function sendAdminBookingEmail(booking: BookingRecord) {
   const service = getServicePackage(booking.serviceId);

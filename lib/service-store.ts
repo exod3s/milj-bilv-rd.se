@@ -1,5 +1,6 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { servicePackageIds } from "@/lib/booking-types";
 import type { ServicePackage } from "@/lib/pricing";
 import { servicePackages } from "@/lib/pricing";
 
@@ -8,7 +9,9 @@ const servicesFile = path.join(process.cwd(), "data", "services.json");
 export async function readServices(): Promise<ServicePackage[]> {
   try {
     const file = await readFile(servicesFile, "utf8");
-    return JSON.parse(file) as ServicePackage[];
+    const services = JSON.parse(file) as ServicePackage[];
+    const validIds = new Set<string>(servicePackageIds);
+    return services.filter((service) => validIds.has(service.id));
   } catch {
     return [...servicePackages];
   }

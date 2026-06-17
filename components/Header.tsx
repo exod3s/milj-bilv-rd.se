@@ -6,7 +6,8 @@ import { Menu, X } from "lucide-react";
 import { useState } from "react";
 import { clsx } from "clsx";
 import { BrandLogo } from "@/components/BrandLogo";
-import { businessInfo, navItems } from "@/lib/site";
+import { businessInfo } from "@/lib/business-info";
+import { navItems } from "@/lib/site";
 
 export function Header() {
   const pathname = usePathname();

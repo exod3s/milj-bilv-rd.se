@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Mail, MapPin, Phone } from "lucide-react";
 import { PageHero } from "@/components/PageHero";
 import { SectionHeading } from "@/components/SectionHeading";
-import { businessInfo } from "@/lib/site";
+import { businessInfo } from "@/lib/business-info";
 
 export const metadata: Metadata = {
   title: "Kontakt och öppettider",
@@ -73,7 +73,7 @@ export default function ContactPage() {
             <div className="surface overflow-hidden">
               <iframe
                 title="Google Maps karta för Miljö Bilvård i Ö-vik"
-                src="https://www.google.com/maps?q=%C3%96rnsk%C3%B6ldsvik%2C%20Sweden&output=embed"
+                src={businessInfo.googleMapsEmbedUrl}
                 className="h-[24rem] w-full border-0"
                 loading="lazy"
                 referrerPolicy="no-referrer-when-downgrade"

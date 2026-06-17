@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { readBookings } from "@/lib/booking-store";
+import { businessInfo } from "@/lib/business-info";
 import { formatCurrency } from "@/lib/pricing";
 
 export const metadata: Metadata = {
@@ -98,6 +99,30 @@ export default async function AdminPage() {
           </div>
         </section>
       </div>
+
+      <section className="surface mt-6 p-5">
+        <h2 className="text-xl font-black text-forest-950">
+          Publik kontaktinformation
+        </h2>
+        <div className="mt-4 grid gap-4 text-sm md:grid-cols-3">
+          <div>
+            <p className="font-black text-forest-700">Telefon</p>
+            <p className="mt-1 text-slate-700">{businessInfo.phone}</p>
+          </div>
+          <div>
+            <p className="font-black text-forest-700">E-post</p>
+            <p className="mt-1 text-slate-700">{businessInfo.email}</p>
+          </div>
+          <div>
+            <p className="font-black text-forest-700">Öppettider</p>
+            <p className="mt-1 text-slate-700">
+              {businessInfo.openingHours
+                .map((row) => `${row.day}: ${row.hours}`)
+                .join(" · ")}
+            </p>
+          </div>
+        </div>
+      </section>
     </AdminShell>
   );
 }

@@ -2,7 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { ArrowRight, Clock } from "lucide-react";
 import type { ServicePackage } from "@/lib/pricing";
-import { formatCurrency } from "@/lib/pricing";
+import { formatCurrency, serviceFallbackImages } from "@/lib/pricing";
 
 type ServiceCardProps = {
   service: ServicePackage;
@@ -26,11 +26,13 @@ const categoryImages: Record<string, string> = {
 };
 
 export function ServiceCard({ service }: ServiceCardProps) {
+  const image = service.image ?? serviceFallbackImages[service.id] ?? categoryImages[service.category];
+
   return (
     <article className="surface flex h-full flex-col overflow-hidden transition hover:-translate-y-1 hover:border-forest-300">
       <div className="relative aspect-[16/10] overflow-hidden bg-forest-950">
         <Image
-          src={categoryImages[service.category]}
+          src={image}
           alt={`${service.name} hos Miljö Bilvård i Ö-vik`}
           fill
           sizes="(min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw"
