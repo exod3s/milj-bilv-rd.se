@@ -8,6 +8,7 @@ import {
 import { businessInfo } from "@/lib/business-info";
 import { getResend, hasEmailProvider } from "@/lib/resend";
 import { loanCars } from "@/lib/loan-cars";
+import { getSmtpTransport, hasSmtpProvider } from "@/lib/smtp";
 
 type MailPayload = {
   to: string | string[];
@@ -18,30 +19,55 @@ type MailPayload = {
 };
 
 function emailFrom() {
-  return process.env.EMAIL_FROM ?? `${businessInfo.name} <onboarding@resend.dev>`;
+  return (
+    process.env.EMAIL_FROM ??
+    `${businessInfo.name} <${
+      process.env.SMTP_USER ?? "onboarding@resend.dev"
+    }>`
+  );
 }
 
 async function sendMail(payload: MailPayload) {
-  if (!hasEmailProvider()) {
+  if (hasSmtpProvider()) {
+    const result = await getSmtpTransport().sendMail({
+      from: emailFrom(),
+      to: payload.to,
+      cc: payload.cc,
+      subject: payload.subject,
+      html: payload.html,
+      text: payload.text,
+      replyTo: businessInfo.bookingEmailAscii
+    });
+
+    return {
+      provider: "smtp",
+      messageId: result.messageId
+    };
+  }
+
+  if (hasEmailProvider()) {
+    const { data, error } = await getResend().emails.send({
+      from: emailFrom(),
+      to: payload.to,
+      cc: payload.cc,
+      subject: payload.subject,
+      html: payload.html,
+      text: payload.text,
+      replyTo: businessInfo.bookingEmailAscii
+    });
+
+    if (error) {
+      console.error("Resend email error", error);
+      throw new Error("E-post kunde inte skickas");
+    }
+
+    return data;
+  }
+
+  if (!hasSmtpProvider() && !hasEmailProvider()) {
     console.log("Email provider missing. Mock email only.", payload);
     return { mocked: true };
   }
-
-  const { data, error } = await getResend().emails.send({
-    from: emailFrom(),
-    to: payload.to,
-    cc: payload.cc,
-    subject: payload.subject,
-    html: payload.html,
-    text: payload.text
-  });
-
-  if (error) {
-    console.error("Resend email error", error);
-    throw new Error("E-post kunde inte skickas");
-  }
-
-  return data;
 }
 
 function bookingRows(booking: BookingRecord) {
@@ -115,7 +141,7 @@ ${businessInfo.email}`;
 
 export async function sendAdminBookingEmail(booking: BookingRecord) {
   await sendMail({
-    to: process.env.ADMIN_EMAIL ?? businessInfo.emailAscii,
+    to: process.env.ADMIN_EMAIL ?? businessInfo.bookingEmailAscii,
     cc: [businessInfo.bookingCopyEmail],
     subject: `Ny bokning: ${booking.customer.name}`,
     html: bookingHtml("Ny bokning", "En ny bokning har kommit in.", booking),

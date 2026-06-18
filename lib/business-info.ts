@@ -5,7 +5,8 @@ export const businessInfo = {
   phones: ["0660-221100"],
   email: "info@miljöbilvård.se",
   emailAscii: "info@xn--miljbilvrd-85a3r.se",
-  bookingEmail: "info@miljöbilvård.se",
+  bookingEmail: "bokning@miljöbilvård.se",
+  bookingEmailAscii: "bokning@xn--miljbilvrd-85a3r.se",
   bookingCopyEmail: "info@xn--miljbilvrd-85a3r.se",
   address: "Gamla Riksvägen 4G, 89151 Örnsköldsvik",
   googleMapsUrl:
