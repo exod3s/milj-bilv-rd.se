@@ -110,3 +110,30 @@ export async function updateBookingStatus(id: string, status: BookingStatus) {
   await writeBookings(bookings);
   return booking;
 }
+
+export async function deleteBooking(id: string) {
+  if (hasDatabase()) {
+    await ensureDatabaseSchema();
+    const sql = getSql();
+    const rows = (await sql`
+      DELETE FROM bookings
+      WHERE id = ${id}
+      RETURNING id
+    `) as { id: string }[];
+
+    if (!rows[0]) {
+      throw new Error("Bokningen hittades inte");
+    }
+
+    return;
+  }
+
+  const bookings = await readBookings();
+  const bookingExists = bookings.some((booking) => booking.id === id);
+
+  if (!bookingExists) {
+    throw new Error("Bokningen hittades inte");
+  }
+
+  await writeBookings(bookings.filter((booking) => booking.id !== id));
+}

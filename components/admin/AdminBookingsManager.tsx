@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Loader2, Trash2 } from "lucide-react";
 import { bookingStatuses, type BookingRecord, type BookingStatus } from "@/lib/booking-types";
 import { formatCurrency } from "@/lib/pricing";
 import { loanCars } from "@/lib/loan-cars";
@@ -20,6 +21,7 @@ export function AdminBookingsManager({
 }) {
   const [bookings, setBookings] = useState(initialBookings);
   const [message, setMessage] = useState("");
+  const [deletingId, setDeletingId] = useState("");
 
   async function changeStatus(id: string, status: BookingStatus) {
     setMessage("");
@@ -45,6 +47,45 @@ export function AdminBookingsManager({
       )
     );
     setMessage("Status uppdaterad.");
+  }
+
+  async function removeBooking(booking: BookingRecord) {
+    const confirmed = window.confirm(
+      `Ta bort bokningen för ${booking.customer.name} (${booking.customer.licensePlate}) permanent?`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setDeletingId(booking.id);
+    setMessage("");
+
+    try {
+      const response = await fetch(
+        `/api/admin/bookings?id=${encodeURIComponent(booking.id)}`,
+        { method: "DELETE" }
+      );
+      const text = await response.text();
+      const result = text
+        ? (JSON.parse(text) as { ok: boolean; error?: string })
+        : { ok: false, error: "Servern gav inget svar" };
+
+      if (!response.ok || !result.ok) {
+        throw new Error(result.error ?? "Kunde inte ta bort bokningen");
+      }
+
+      setBookings((current) =>
+        current.filter((item) => item.id !== booking.id)
+      );
+      setMessage("Bokningen har tagits bort permanent.");
+    } catch (error) {
+      setMessage(
+        error instanceof Error ? error.message : "Kunde inte ta bort bokningen"
+      );
+    } finally {
+      setDeletingId("");
+    }
   }
 
   return (
@@ -154,6 +195,19 @@ export function AdminBookingsManager({
                       onClick={() => changeStatus(booking.id, "completed")}
                     >
                       Bilen är klar
+                    </button>
+                    <button
+                      type="button"
+                      className="inline-flex items-center justify-center gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs font-black text-red-700 transition hover:bg-red-100 disabled:cursor-wait disabled:opacity-60"
+                      onClick={() => removeBooking(booking)}
+                      disabled={deletingId === booking.id}
+                    >
+                      {deletingId === booking.id ? (
+                        <Loader2 size={14} className="animate-spin" />
+                      ) : (
+                        <Trash2 size={14} />
+                      )}
+                      Ta bort bokning
                     </button>
                   </div>
                 </td>

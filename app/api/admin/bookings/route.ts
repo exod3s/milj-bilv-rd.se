@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { bookingStatuses, type BookingStatus } from "@/lib/booking-types";
-import { readBookings, updateBookingStatus } from "@/lib/booking-store";
+import {
+  deleteBooking,
+  readBookings,
+  updateBookingStatus
+} from "@/lib/booking-store";
 import { sendCustomerStatusEmail } from "@/lib/email";
 
 export async function GET() {
@@ -29,6 +33,32 @@ export async function PATCH(request: Request) {
           error instanceof Error
             ? error.message
             : "Kunde inte uppdatera bokningen"
+      },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const id = searchParams.get("id");
+
+  if (!id) {
+    return NextResponse.json(
+      { ok: false, error: "Bokningens id krävs" },
+      { status: 400 }
+    );
+  }
+
+  try {
+    await deleteBooking(id);
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error:
+          error instanceof Error ? error.message : "Kunde inte ta bort bokningen"
       },
       { status: 500 }
     );
