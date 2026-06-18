@@ -32,10 +32,23 @@ export const servicePackageIds = [
 export const vehicleTypeIds = ["sedan", "kombi", "suv", "7-sits"] as const;
 
 export const extraIds = ["dog-hair"] as const;
+export const loanCarIds = ["loan-car-1", "loan-car-2", "loan-car-3"] as const;
 
 export type ServicePackageId = string;
 export type VehicleTypeId = (typeof vehicleTypeIds)[number];
 export type ExtraId = (typeof extraIds)[number];
+export type LoanCarId = (typeof loanCarIds)[number];
+
+export type LoanCarInfo = {
+  id: LoanCarId;
+  name: string;
+  description: string;
+};
+
+export type LoanCarAvailability = LoanCarInfo & {
+  available: boolean;
+  unavailableReason?: string;
+};
 
 export type CustomerDetails = {
   name: string;
@@ -51,6 +64,7 @@ export type BookingRequest = {
   vehicleTypeId: VehicleTypeId;
   extras: ExtraId[];
   pickupDropoff: boolean;
+  loanCarId?: LoanCarId;
   customer: CustomerDetails;
   date: string;
   time: string;
@@ -121,6 +135,7 @@ export const bookingRequestSchema = z.object({
   vehicleTypeId: z.enum(vehicleTypeIds),
   extras: z.array(z.enum(extraIds)).default([]),
   pickupDropoff: z.boolean().default(false),
+  loanCarId: z.enum(loanCarIds).optional(),
   customer: z.object({
     name: z.string().trim().min(2, "Namn krävs"),
     email: z.string().trim().email("Ange en giltig e-postadress"),

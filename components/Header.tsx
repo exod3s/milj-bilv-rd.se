@@ -57,12 +57,6 @@ export function Header() {
           >
             {businessInfo.phone}
           </a>
-          <a
-            href={`tel:${businessInfo.secondaryPhone.replaceAll(" ", "")}`}
-            className="text-sm font-black text-forest-950 hover:text-forest-700"
-          >
-            {businessInfo.secondaryPhone}
-          </a>
           <Link href="/booking" className="button-primary">
             Boka nu
           </Link>

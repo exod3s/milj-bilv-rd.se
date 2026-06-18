@@ -4,6 +4,8 @@ import { bookingRequestSchema } from "@/lib/booking-types";
 import { saveBooking } from "@/lib/booking-store";
 import { sendAdminBookingEmail, sendCustomerConfirmationEmail } from "@/lib/email";
 import { createCalendarEvent, getAvailableSlots } from "@/lib/google-calendar";
+import { getLoanCarAvailability } from "@/lib/loan-car-store";
+import { loanCars } from "@/lib/loan-cars";
 import { calculateBookingPriceFromCatalog, getVehicleType } from "@/lib/pricing";
 import { readServices } from "@/lib/service-store";
 
@@ -52,6 +54,35 @@ export async function POST(request: Request) {
     const service = services.find((item) => item.id === bookingInput.serviceId);
     const vehicleType = getVehicleType(bookingInput.vehicleTypeId);
 
+    if (!service) {
+      return NextResponse.json(
+        { ok: false, error: "Det valda servicepaketet finns inte längre." },
+        { status: 400 }
+      );
+    }
+
+    if (bookingInput.loanCarId) {
+      const loanCarAvailability = await getLoanCarAvailability({
+        date: bookingInput.date,
+        time: bookingInput.time,
+        durationMinutes: service.durationMinutes
+      });
+      const selectedLoanCar = loanCarAvailability.find(
+        (car) => car.id === bookingInput.loanCarId
+      );
+
+      if (!selectedLoanCar?.available) {
+        return NextResponse.json(
+          {
+            ok: false,
+            error:
+              "Den valda lånebilen blev precis upptagen. Välj en annan lånebil eller fortsätt utan."
+          },
+          { status: 409 }
+        );
+      }
+    }
+
     const booking: BookingRecord = {
       ...bookingInput,
       id: crypto.randomUUID(),
@@ -76,6 +107,8 @@ export async function POST(request: Request) {
         service: service?.name ?? booking.serviceId,
         vehicleType: vehicleType?.name ?? booking.vehicleTypeId,
         duration: service?.duration ?? "-",
+        loanCarId: booking.loanCarId,
+        loanCar: loanCars.find((car) => car.id === booking.loanCarId)?.name,
         date: booking.date,
         time: booking.time,
         price: booking.price

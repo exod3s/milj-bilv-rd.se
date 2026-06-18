@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   BadgeCheck,
   CalendarDays,
@@ -12,6 +12,7 @@ import {
   Dog,
   Droplets,
   Loader2,
+  KeyRound,
   Mail,
   MessageSquare,
   Phone,
@@ -27,6 +28,8 @@ import type {
   AvailableSlot,
   BookingRecord,
   ExtraId,
+  LoanCarAvailability,
+  LoanCarId,
   ServicePackageId,
   VehicleRegistrationInfo,
   VehicleTypeId
@@ -47,6 +50,7 @@ const steps: { label: string; icon: LucideIcon }[] = [
   { label: "Tillval", icon: WandSparkles },
   { label: "Kontakt", icon: User },
   { label: "Tid", icon: CalendarDays },
+  { label: "Lånebil", icon: KeyRound },
   { label: "Granska", icon: BadgeCheck }
 ] as const;
 
@@ -104,6 +108,7 @@ type BookingResponse =
         service: string;
         vehicleType: string;
         duration: string;
+        loanCar?: string;
       };
     }
   | {
@@ -127,6 +132,9 @@ export function BookingForm({
   const [serviceId, setServiceId] = useState<ServicePackageId | "">(
     initialServiceId ?? ""
   );
+  const [expandedServiceId, setExpandedServiceId] = useState<
+    ServicePackageId | ""
+  >(initialServiceId ?? "");
   const [vehicleTypeId, setVehicleTypeId] = useState<VehicleTypeId | "">("");
   const [extras, setExtras] = useState<ExtraId[]>([]);
   const [pickupDropoff, setPickupDropoff] = useState(false);
@@ -138,6 +146,10 @@ export function BookingForm({
     message: ""
   });
   const [selectedSlotId, setSelectedSlotId] = useState("");
+  const [loanCarId, setLoanCarId] = useState<LoanCarId | "">("");
+  const [loanCars, setLoanCars] = useState<LoanCarAvailability[]>([]);
+  const [isLoadingLoanCars, setIsLoadingLoanCars] = useState(false);
+  const [loanCarError, setLoanCarError] = useState("");
   const [formError, setFormError] = useState("");
   const [vehicleLookupError, setVehicleLookupError] = useState("");
   const [isLookingUpVehicle, setIsLookingUpVehicle] = useState(false);
@@ -147,6 +159,7 @@ export function BookingForm({
   );
 
   const selectedSlot = availableSlots.find((slot) => slot.id === selectedSlotId);
+  const selectedService = services.find((service) => service.id === serviceId);
   const visibleSlots = isHero ? availableSlots.slice(0, 6) : availableSlots;
   const bookableCategories = serviceCategories.filter((category) =>
     services.some((service) => service.bookable && service.category === category)
@@ -174,6 +187,64 @@ export function BookingForm({
   const selectedVehicleRestriction =
     serviceId === "summer-discount" &&
     (vehicleTypeId === "suv" || vehicleTypeId === "7-sits");
+
+  useEffect(() => {
+    if (!selectedSlot || !selectedService) {
+      setLoanCars([]);
+      setLoanCarId("");
+      return;
+    }
+
+    const controller = new AbortController();
+    const slot = selectedSlot;
+    const service = selectedService;
+
+    async function loadLoanCars() {
+      setIsLoadingLoanCars(true);
+      setLoanCarError("");
+
+      try {
+        const params = new URLSearchParams({
+          date: slot.date,
+          time: slot.time,
+          durationMinutes: String(service.durationMinutes)
+        });
+        const response = await fetch(`/api/loan-cars?${params}`, {
+          signal: controller.signal
+        });
+        const result = (await response.json()) as {
+          ok: boolean;
+          cars?: LoanCarAvailability[];
+          error?: string;
+        };
+
+        if (!response.ok || !result.ok || !result.cars) {
+          throw new Error(result.error ?? "Kunde inte hämta lånebilar");
+        }
+
+        setLoanCars(result.cars);
+        setLoanCarId((current) =>
+          current && result.cars?.some((car) => car.id === current && car.available)
+            ? current
+            : ""
+        );
+      } catch (error) {
+        if (error instanceof Error && error.name === "AbortError") {
+          return;
+        }
+        setLoanCarError(
+          error instanceof Error ? error.message : "Kunde inte hämta lånebilar"
+        );
+      } finally {
+        if (!controller.signal.aborted) {
+          setIsLoadingLoanCars(false);
+        }
+      }
+    }
+
+    void loadLoanCars();
+    return () => controller.abort();
+  }, [selectedService, selectedSlot]);
 
   function updateCustomer(field: keyof CustomerState, value: string) {
     setCustomer((current) => ({
@@ -304,6 +375,7 @@ export function BookingForm({
           vehicleTypeId,
           extras,
           pickupDropoff,
+          loanCarId: loanCarId || undefined,
           customer,
           date: selectedSlot.date,
           time: selectedSlot.time
@@ -341,12 +413,13 @@ export function BookingForm({
         </h2>
         <p className="mt-4 leading-7 text-slate-600">
           Vi har tagit emot bokning {confirmation.booking.id}. En bekräftelse
-          visas här och mockade e-postfunktioner har körts i backend.
+          visas här och skickas även via e-post när e-posttjänsten är ansluten.
         </p>
         <div className="mt-6 grid gap-3 rounded-md bg-forest-50 p-4 text-sm font-semibold text-forest-950 sm:grid-cols-3">
           <span>Paket: {confirmation.booking.service}</span>
           <span>Fordonstyp: {confirmation.booking.vehicleType}</span>
           <span>Varaktighet: {confirmation.booking.duration}</span>
+          <span>Lånebil: {confirmation.booking.loanCar ?? "Ingen"}</span>
           <span>Datum: {confirmation.booking.date}</span>
           <span>Tid: {confirmation.booking.time}</span>
           <span>Slutpris: {formatCurrency(confirmation.booking.price.total)}</span>
@@ -358,7 +431,7 @@ export function BookingForm({
   return (
     <div className={clsx("surface w-full min-w-0 overflow-hidden", isHero && "shadow-none")}>
       <div className={clsx("border-b border-forest-100 bg-white", isHero ? "p-2 sm:p-3" : "p-4 sm:p-6")}>
-        <div className="flex max-w-full gap-2 overflow-x-auto pb-1">
+        <div className="grid grid-cols-4 gap-2 sm:grid-cols-7">
           {steps.map((item, index) => {
             const Icon = item.icon;
 
@@ -373,7 +446,7 @@ export function BookingForm({
                   }
                 }}
                 className={clsx(
-                  "inline-flex shrink-0 items-center gap-2 rounded-md px-3 py-2 text-xs font-black transition",
+                  "flex min-w-0 flex-col items-center justify-center gap-1 rounded-md px-1 py-2 text-center text-[10px] font-black transition sm:px-2 sm:text-xs",
                   index === step
                     ? "bg-forest-950 text-white"
                     : index < step
@@ -381,9 +454,9 @@ export function BookingForm({
                       : "bg-slate-100 text-slate-500"
                 )}
               >
-                <Icon size={15} />
-                <span className={clsx(isHero && "hidden sm:inline")}>
-                  {index + 1}. {item.label}
+                <Icon size={isHero ? 22 : 25} strokeWidth={2.2} />
+                <span className="block max-w-full truncate">
+                  {item.label}
                 </span>
               </button>
             );
@@ -432,7 +505,17 @@ export function BookingForm({
                   <PackageAccordionCard
                     key={service.id}
                     active={serviceId === service.id}
-                    onClick={() => setServiceId(service.id)}
+                    expanded={expandedServiceId === service.id}
+                    onToggle={() =>
+                      setExpandedServiceId((current) =>
+                        current === service.id ? "" : service.id
+                      )
+                    }
+                    onSelect={() => {
+                      setServiceId(service.id);
+                      setFormError("");
+                      setStep(1);
+                    }}
                     service={service}
                     icon={categoryIcons[service.category]}
                     compact={isHero}
@@ -663,7 +746,10 @@ export function BookingForm({
                   <button
                     key={slot.id}
                     type="button"
-                    onClick={() => setSelectedSlotId(slot.id)}
+                    onClick={() => {
+                      setSelectedSlotId(slot.id);
+                      setLoanCarId("");
+                    }}
                     className={clsx(
                       "rounded-md border p-4 text-left transition",
                       selectedSlotId === slot.id
@@ -691,6 +777,85 @@ export function BookingForm({
 
           {step === 5 ? (
             <StepShell
+              title="Välj lånebil"
+              description="Lånebil är kostnadsfri och reserveras under hela behandlingstiden. Du kan också fortsätta utan lånebil."
+              compact={isHero}
+            >
+              {isLoadingLoanCars ? (
+                <div className="flex items-center gap-3 rounded-md border border-forest-100 bg-forest-50 p-4 text-sm font-bold text-forest-800">
+                  <Loader2 size={18} className="animate-spin" />
+                  Kontrollerar vilka lånebilar som är lediga...
+                </div>
+              ) : null}
+
+              {loanCarError ? (
+                <p className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
+                  {loanCarError}. Du kan fortsätta utan lånebil.
+                </p>
+              ) : null}
+
+              {!isLoadingLoanCars && !loanCarError ? (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <ChoiceButton
+                    active={!loanCarId}
+                    onClick={() => setLoanCarId("")}
+                    title="Ingen lånebil"
+                    meta="Jag ordnar transport själv"
+                    icon={Car}
+                    compact={isHero}
+                  />
+                  {loanCars.map((car) => (
+                    <button
+                      key={car.id}
+                      type="button"
+                      onClick={() => car.available && setLoanCarId(car.id)}
+                      disabled={!car.available}
+                      className={clsx(
+                        "rounded-md border p-4 text-left transition",
+                        loanCarId === car.id
+                          ? "border-forest-600 bg-forest-50"
+                          : "border-forest-100 bg-white",
+                        car.available
+                          ? "hover:-translate-y-0.5 hover:border-forest-300"
+                          : "cursor-not-allowed bg-slate-100 opacity-60"
+                      )}
+                    >
+                      <span className="flex items-start gap-3">
+                        <span
+                          className={clsx(
+                            "flex h-12 w-12 shrink-0 items-center justify-center rounded-md",
+                            loanCarId === car.id
+                              ? "bg-forest-600 text-white"
+                              : "bg-forest-50 text-forest-700"
+                          )}
+                        >
+                          <KeyRound size={23} />
+                        </span>
+                        <span>
+                          <span className="block font-black text-forest-950">
+                            {car.name}
+                          </span>
+                          <span
+                            className={clsx(
+                              "mt-1 block text-sm font-bold",
+                              car.available ? "text-forest-700" : "text-slate-500"
+                            )}
+                          >
+                            {car.available
+                              ? "Ledig under din bokning"
+                              : car.unavailableReason}
+                          </span>
+                        </span>
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+            </StepShell>
+          ) : null}
+
+          {step === 6 ? (
+            <StepShell
               title="Granska och bekräfta"
               description="Kontrollera detaljerna innan du skickar bokningen. Priset räknas även om i backend."
               compact={isHero}
@@ -703,6 +868,8 @@ export function BookingForm({
                 pickupDropoff={pickupDropoff}
                 customer={customer}
                 selectedSlot={selectedSlot}
+                loanCarId={loanCarId}
+                loanCars={loanCars}
                 priceSummary={priceSummary}
                 vehicleInfo={customer.vehicleInfo}
               />
@@ -907,13 +1074,17 @@ function ChoiceButton({
 
 function PackageAccordionCard({
   active,
-  onClick,
+  expanded,
+  onToggle,
+  onSelect,
   service,
   icon: Icon,
   compact = false
 }: {
   active: boolean;
-  onClick: () => void;
+  expanded: boolean;
+  onToggle: () => void;
+  onSelect: () => void;
   service: ServicePackage;
   icon: LucideIcon;
   compact?: boolean;
@@ -922,20 +1093,24 @@ function PackageAccordionCard({
     <article
       className={clsx(
         "rounded-md border bg-white text-left transition hover:-translate-y-0.5",
-        active ? "border-forest-400 ring-2 ring-forest-100" : "border-black/10",
+        active || expanded
+          ? "border-forest-400 ring-2 ring-forest-100"
+          : "border-black/10",
         compact ? "p-3" : "p-4"
       )}
     >
       <button
         type="button"
-        onClick={onClick}
+        onClick={onToggle}
         className="flex w-full min-w-0 items-center gap-3 text-left"
-        aria-expanded={active}
+        aria-expanded={expanded}
       >
         <span
           className={clsx(
             "flex h-11 w-11 shrink-0 items-center justify-center rounded-md",
-            active ? "bg-forest-300 text-forest-950" : "bg-forest-50 text-forest-700"
+            active || expanded
+              ? "bg-forest-300 text-forest-950"
+              : "bg-forest-50 text-forest-700"
           )}
         >
           <Icon size={22} />
@@ -955,7 +1130,7 @@ function PackageAccordionCard({
         </span>
       </button>
 
-      {active ? (
+      {expanded ? (
         <div className="mt-4 border-t border-black/10 pt-4">
           <p className="text-sm leading-6 text-slate-700">
             {service.description}
@@ -974,7 +1149,7 @@ function PackageAccordionCard({
             <span className="text-sm font-black text-forest-700">
               Varaktighet: {service.duration}
             </span>
-            <button type="button" onClick={onClick} className="button-primary py-2">
+            <button type="button" onClick={onSelect} className="button-primary py-2">
               Välj paket
             </button>
           </div>
@@ -1124,6 +1299,8 @@ function ReviewDetails({
   pickupDropoff,
   customer,
   selectedSlot,
+  loanCarId,
+  loanCars,
   priceSummary,
   vehicleInfo
 }: {
@@ -1134,6 +1311,8 @@ function ReviewDetails({
   pickupDropoff: boolean;
   customer: CustomerState;
   selectedSlot?: AvailableSlot;
+  loanCarId: LoanCarId | "";
+  loanCars: LoanCarAvailability[];
   priceSummary: ReturnType<typeof calculateBookingPriceFromCatalog> | null;
   vehicleInfo?: VehicleRegistrationInfo;
 }) {
@@ -1150,6 +1329,13 @@ function ReviewDetails({
         <SummaryItem
           label="Datum och tid"
           value={selectedSlot ? `${selectedSlot.date} kl. ${selectedSlot.time}` : "-"}
+        />
+        <SummaryItem
+          label="Lånebil"
+          value={
+            loanCars.find((car) => car.id === loanCarId)?.name ??
+            "Ingen lånebil"
+          }
         />
         <SummaryItem label="Registreringsnummer" value={customer.licensePlate || "-"} />
         <SummaryItem label="Namn" value={customer.name || "-"} />

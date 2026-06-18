@@ -7,6 +7,7 @@ import {
 } from "@/lib/pricing";
 import { businessInfo } from "@/lib/business-info";
 import { getResend, hasEmailProvider } from "@/lib/resend";
+import { loanCars } from "@/lib/loan-cars";
 
 type MailPayload = {
   to: string | string[];
@@ -53,7 +54,10 @@ function bookingRows(booking: BookingRecord) {
     vehicleType: booking.vehicleTypeName ?? vehicleType?.name ?? booking.vehicleTypeId,
     extras: extras.length > 0 ? extras.map((extra) => extra.name).join(", ") : "Inga tillval",
     duration: booking.duration ?? service?.duration ?? "-",
-    finalPrice: formatCurrency(booking.price.total)
+    finalPrice: formatCurrency(booking.price.total),
+    loanCar:
+      loanCars.find((car) => car.id === booking.loanCarId)?.name ??
+      "Ingen lånebil"
   };
 }
 
@@ -73,11 +77,12 @@ function bookingHtml(title: string, intro: string, booking: BookingRecord) {
         <tr><td><strong>Registreringsnummer</strong></td><td>${booking.customer.licensePlate}</td></tr>
         <tr><td><strong>Tillval</strong></td><td>${rows.extras}</td></tr>
         <tr><td><strong>Varaktighet</strong></td><td>${rows.duration}</td></tr>
+        <tr><td><strong>Lånebil</strong></td><td>${rows.loanCar}</td></tr>
         <tr><td><strong>Datum/tid</strong></td><td>${booking.date} kl. ${booking.time}</td></tr>
         <tr><td><strong>Slutpris</strong></td><td>${rows.finalPrice}</td></tr>
       </table>
       ${booking.customer.message ? `<p><strong>Meddelande:</strong> ${booking.customer.message}</p>` : ""}
-      <p>${businessInfo.name}<br>${businessInfo.address}<br>${businessInfo.phone} · ${businessInfo.secondaryPhone}<br>${businessInfo.email}</p>
+      <p>${businessInfo.name}<br>${businessInfo.address}<br>${businessInfo.phone}<br>${businessInfo.email}</p>
     </div>
   `;
 }
@@ -97,13 +102,14 @@ Fordon: ${rows.vehicleType}
 Registreringsnummer: ${booking.customer.licensePlate}
 Tillval: ${rows.extras}
 Varaktighet: ${rows.duration}
+Lånebil: ${rows.loanCar}
 Datum/tid: ${booking.date} kl. ${booking.time}
 Slutpris: ${rows.finalPrice}
 ${booking.customer.message ? `Meddelande: ${booking.customer.message}` : ""}
 
 ${businessInfo.name}
 ${businessInfo.address}
-${businessInfo.phone} · ${businessInfo.secondaryPhone}
+${businessInfo.phone}
 ${businessInfo.email}`;
 }
 

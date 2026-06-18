@@ -108,7 +108,7 @@ export default async function AdminPage() {
           <div>
             <p className="font-black text-forest-700">Telefon</p>
             <p className="mt-1 text-slate-700">
-              {businessInfo.phones.join(" · ")}
+              {businessInfo.phone}
             </p>
           </div>
           <div>

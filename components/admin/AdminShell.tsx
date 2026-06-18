@@ -5,6 +5,7 @@ const adminLinks = [
   { href: "/admin", label: "Översikt" },
   { href: "/admin/services", label: "Tjänster" },
   { href: "/admin/bookings", label: "Bokningar" },
+  { href: "/admin/loan-cars", label: "Lånebilar" },
   { href: "/admin/customers", label: "Kunder" },
   { href: "/admin/gallery", label: "Galleri" }
 ];

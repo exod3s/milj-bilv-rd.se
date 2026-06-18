@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { bookingStatuses, type BookingRecord, type BookingStatus } from "@/lib/booking-types";
 import { formatCurrency } from "@/lib/pricing";
+import { loanCars } from "@/lib/loan-cars";
 
 const statusLabels: Record<BookingStatus, string> = {
   new: "Ny",
@@ -112,7 +113,16 @@ export function AdminBookingsManager({
                   {formatCurrency(booking.price.total)}
                 </td>
                 <td className="px-4 py-4">
-                  {booking.extras.length > 0 ? booking.extras.join(", ") : "Inga"}
+                  <p>
+                    {booking.extras.length > 0
+                      ? booking.extras.join(", ")
+                      : "Inga"}
+                  </p>
+                  {booking.loanCarId ? (
+                    <p className="mt-1 font-black text-forest-700">
+                      {loanCars.find((car) => car.id === booking.loanCarId)?.name}
+                    </p>
+                  ) : null}
                 </td>
                 <td className="px-4 py-4">
                   <select
