@@ -59,4 +59,13 @@ export async function ensureDatabaseSchema() {
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `;
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS booking_time_blocks (
+      booking_id TEXT PRIMARY KEY,
+      time_range TSRANGE NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      EXCLUDE USING GIST (time_range WITH &&)
+    )
+  `;
 }

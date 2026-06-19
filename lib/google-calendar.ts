@@ -1,4 +1,5 @@
 import type { AvailableSlot, BookingRecord } from "@/lib/booking-types";
+import { readBookings } from "@/lib/booking-store";
 import { getServiceDuration, getServicePackage } from "@/lib/pricing";
 
 const slotTimes = ["08:30", "10:30", "13:00", "15:00"];
@@ -11,35 +12,59 @@ function weekdayName(date: Date) {
   return new Intl.DateTimeFormat("sv-SE", { weekday: "short" }).format(date);
 }
 
-export async function getAvailableSlots(): Promise<AvailableSlot[]> {
+export async function getAvailableSlots(
+  durationMinutes = 30
+): Promise<AvailableSlot[]> {
   const slots: AvailableSlot[] = [];
   const today = new Date();
+  const bookings = (await readBookings()).filter(
+    (booking) => booking.status !== "cancelled"
+  );
 
-  for (let offset = 1; slots.length < 18 && offset < 14; offset += 1) {
+  for (let offset = 1; offset <= 31; offset += 1) {
     const date = new Date(today);
     date.setDate(today.getDate() + offset);
 
     const day = date.getDay();
-    const isSunday = day === 0;
+    const isWeekend = day === 0 || day === 6;
 
-    if (isSunday) {
+    if (isWeekend) {
       continue;
     }
 
     const dateString = formatSlotDate(date);
 
-    slotTimes.forEach((time, index) => {
+    slotTimes.forEach((time) => {
+      const start = new Date(`${dateString}T${time}:00`);
+      const end = new Date(start);
+      end.setMinutes(end.getMinutes() + durationMinutes);
+      const closingTime = new Date(`${dateString}T18:00:00`);
+      const overlapsBooking = bookings.some((booking) => {
+        const bookingStart = new Date(
+          `${booking.date}T${booking.time}:00`
+        );
+        const bookingEnd = new Date(bookingStart);
+        bookingEnd.setMinutes(
+          bookingEnd.getMinutes() + (booking.durationMinutes ?? 60)
+        );
+        return start < bookingEnd && bookingStart < end;
+      });
+
+      if (end > closingTime || overlapsBooking) {
+        return;
+      }
+
       slots.push({
         id: `${dateString}-${time}`,
         date: dateString,
         time,
         label: `${weekdayName(date)} ${dateString} kl. ${time}`,
-        available: !(day === 6 && index > 1)
+        available: true
       });
     });
   }
 
-  return slots.filter((slot) => slot.available);
+  return slots;
 }
 
 export async function createCalendarEvent(booking: BookingRecord) {

@@ -146,6 +146,11 @@ export function BookingForm({
     message: ""
   });
   const [selectedSlotId, setSelectedSlotId] = useState("");
+  const [bookingSlots, setBookingSlots] = useState(availableSlots);
+  const [selectedBookingDate, setSelectedBookingDate] = useState(
+    availableSlots[0]?.date ?? ""
+  );
+  const [isLoadingSlots, setIsLoadingSlots] = useState(false);
   const [loanCarId, setLoanCarId] = useState<LoanCarId | "">("");
   const [loanCars, setLoanCars] = useState<LoanCarAvailability[]>([]);
   const [isLoadingLoanCars, setIsLoadingLoanCars] = useState(false);
@@ -158,9 +163,15 @@ export function BookingForm({
     null
   );
 
-  const selectedSlot = availableSlots.find((slot) => slot.id === selectedSlotId);
+  const selectedSlot = bookingSlots.find((slot) => slot.id === selectedSlotId);
   const selectedService = services.find((service) => service.id === serviceId);
-  const visibleSlots = isHero ? availableSlots.slice(0, 6) : availableSlots;
+  const availableDates = useMemo(
+    () => [...new Set(bookingSlots.map((slot) => slot.date))],
+    [bookingSlots]
+  );
+  const visibleSlots = bookingSlots.filter(
+    (slot) => slot.date === selectedBookingDate
+  );
   const bookableCategories = serviceCategories.filter((category) =>
     services.some((service) => service.bookable && service.category === category)
   );
@@ -187,6 +198,55 @@ export function BookingForm({
   const selectedVehicleRestriction =
     serviceId === "summer-discount" &&
     (vehicleTypeId === "suv" || vehicleTypeId === "7-sits");
+
+  useEffect(() => {
+    if (!selectedService) {
+      return;
+    }
+
+    const controller = new AbortController();
+    const service = selectedService;
+
+    async function loadAvailableSlots() {
+      setIsLoadingSlots(true);
+      setFormError("");
+
+      try {
+        const response = await fetch(
+          `/api/availability?serviceId=${encodeURIComponent(service.id)}`,
+          { signal: controller.signal }
+        );
+        const result = (await response.json()) as {
+          ok: boolean;
+          slots?: AvailableSlot[];
+          error?: string;
+        };
+
+        if (!response.ok || !result.ok || !result.slots) {
+          throw new Error(result.error ?? "Kunde inte hämta lediga tider");
+        }
+
+        setBookingSlots(result.slots);
+        setSelectedSlotId("");
+        setLoanCarId("");
+        setSelectedBookingDate(result.slots[0]?.date ?? "");
+      } catch (error) {
+        if (error instanceof Error && error.name === "AbortError") {
+          return;
+        }
+        setFormError(
+          error instanceof Error ? error.message : "Kunde inte hämta lediga tider"
+        );
+      } finally {
+        if (!controller.signal.aborted) {
+          setIsLoadingSlots(false);
+        }
+      }
+    }
+
+    void loadAvailableSlots();
+    return () => controller.abort();
+  }, [selectedService]);
 
   useEffect(() => {
     if (!selectedSlot || !selectedService) {
@@ -738,40 +798,78 @@ export function BookingForm({
           {step === 4 ? (
             <StepShell
               title="Välj datum och tid"
-              description="Lediga tider kommer just nu från mockdata. Kalenderhjälpen är förberedd för Google Calendar free/busy."
+              description="Välj bland lediga tider upp till en månad framåt. Bokade och överlappande tider stängs automatiskt."
               compact={isHero}
             >
-              <div className="grid gap-3 sm:grid-cols-2">
-                {visibleSlots.map((slot) => (
-                  <button
-                    key={slot.id}
-                    type="button"
-                    onClick={() => {
-                      setSelectedSlotId(slot.id);
-                      setLoanCarId("");
-                    }}
-                    className={clsx(
-                      "rounded-md border p-4 text-left transition",
-                      selectedSlotId === slot.id
-                        ? "border-forest-600 bg-forest-50"
-                        : "border-forest-100 bg-white hover:border-forest-300"
-                    )}
-                  >
-                    <span className="mb-3 flex h-10 w-10 items-center justify-center rounded-md bg-forest-50 text-forest-700">
-                      <Clock size={20} />
-                    </span>
-                    <span className="block font-black text-forest-950">
-                      {slot.date}
-                    </span>
-                    <span className="mt-1 block text-sm font-semibold text-forest-700">
-                      Kl. {slot.time}
-                    </span>
-                    <span className="mt-2 block text-xs font-bold uppercase tracking-[0.12em] text-slate-500">
-                      Ledig tid
-                    </span>
-                  </button>
-                ))}
-              </div>
+              {isLoadingSlots ? (
+                <div className="flex items-center gap-3 rounded-md border border-forest-100 bg-forest-50 p-4 text-sm font-bold text-forest-800">
+                  <Loader2 size={18} className="animate-spin" />
+                  Hämtar lediga tider...
+                </div>
+              ) : availableDates.length === 0 ? (
+                <p className="rounded-md border border-amber-200 bg-amber-50 p-4 text-sm font-semibold text-amber-800">
+                  Det finns inga lediga tider för detta paket den kommande
+                  månaden. Kontakta oss så hjälper vi dig.
+                </p>
+              ) : (
+                <>
+                  <div className="flex gap-2 overflow-x-auto pb-3">
+                    {availableDates.map((date) => (
+                      <button
+                        key={date}
+                        type="button"
+                        onClick={() => {
+                          setSelectedBookingDate(date);
+                          setSelectedSlotId("");
+                          setLoanCarId("");
+                        }}
+                        className={clsx(
+                          "min-w-28 shrink-0 rounded-md border px-3 py-3 text-left transition",
+                          selectedBookingDate === date
+                            ? "border-forest-950 bg-forest-950 text-white"
+                            : "border-forest-100 bg-white text-forest-950 hover:border-forest-300"
+                        )}
+                      >
+                        <span className="block text-xs font-bold uppercase tracking-[0.1em] opacity-70">
+                          {new Intl.DateTimeFormat("sv-SE", {
+                            weekday: "short"
+                          }).format(new Date(`${date}T12:00:00`))}
+                        </span>
+                        <span className="mt-1 block font-black">{date}</span>
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {visibleSlots.map((slot) => (
+                      <button
+                        key={slot.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedSlotId(slot.id);
+                          setLoanCarId("");
+                        }}
+                        className={clsx(
+                          "rounded-md border p-4 text-left transition",
+                          selectedSlotId === slot.id
+                            ? "border-forest-600 bg-forest-50"
+                            : "border-forest-100 bg-white hover:border-forest-300"
+                        )}
+                      >
+                        <span className="mb-3 flex h-10 w-10 items-center justify-center rounded-md bg-forest-50 text-forest-700">
+                          <Clock size={20} />
+                        </span>
+                        <span className="block font-black text-forest-950">
+                          Kl. {slot.time}
+                        </span>
+                        <span className="mt-2 block text-xs font-bold uppercase tracking-[0.12em] text-slate-500">
+                          Ledig tid
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
             </StepShell>
           ) : null}
 

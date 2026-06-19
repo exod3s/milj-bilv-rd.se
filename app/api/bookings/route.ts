@@ -27,7 +27,23 @@ export async function POST(request: Request) {
     }
 
     const bookingInput = parsed.data;
-    const availableSlots = await getAvailableSlots();
+    const services = await readServices();
+    const price = calculateBookingPriceFromCatalog(services, {
+      serviceId: bookingInput.serviceId,
+      vehicleTypeId: bookingInput.vehicleTypeId,
+      extras: bookingInput.extras
+    });
+    const service = services.find((item) => item.id === bookingInput.serviceId);
+    const vehicleType = getVehicleType(bookingInput.vehicleTypeId);
+
+    if (!service) {
+      return NextResponse.json(
+        { ok: false, error: "Det valda servicepaketet finns inte längre." },
+        { status: 400 }
+      );
+    }
+
+    const availableSlots = await getAvailableSlots(service.durationMinutes);
     const slotIsAvailable = availableSlots.some(
       (slot) =>
         slot.available &&
@@ -42,22 +58,6 @@ export async function POST(request: Request) {
           error: "Tiden är inte längre tillgänglig. Välj en annan tid."
         },
         { status: 409 }
-      );
-    }
-
-    const services = await readServices();
-    const price = calculateBookingPriceFromCatalog(services, {
-      serviceId: bookingInput.serviceId,
-      vehicleTypeId: bookingInput.vehicleTypeId,
-      extras: bookingInput.extras
-    });
-    const service = services.find((item) => item.id === bookingInput.serviceId);
-    const vehicleType = getVehicleType(bookingInput.vehicleTypeId);
-
-    if (!service) {
-      return NextResponse.json(
-        { ok: false, error: "Det valda servicepaketet finns inte längre." },
-        { status: 400 }
       );
     }
 
@@ -116,6 +116,19 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     console.error("Booking API error", error);
+
+    if (
+      error instanceof Error &&
+      error.message === "Tiden är inte längre tillgänglig"
+    ) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "Tiden hann bokas av någon annan. Välj en annan tid."
+        },
+        { status: 409 }
+      );
+    }
 
     return NextResponse.json(
       {
