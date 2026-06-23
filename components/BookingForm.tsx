@@ -542,7 +542,7 @@ export function BookingForm({
               description="Börja med behandlingen som passar bilen bäst. Priset uppdateras när fordonstyp och tillval är valda."
               compact={isHero}
             >
-              <div className="mb-4 flex gap-2 overflow-x-auto pb-2">
+              <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
                 {bookableCategories.map((category) => {
                   const Icon = categoryIcons[category];
 
@@ -552,14 +552,14 @@ export function BookingForm({
                       type="button"
                       onClick={() => setSelectedCategory(category)}
                       className={clsx(
-                        "inline-flex shrink-0 items-center gap-2.5 rounded-md border px-4 py-3 text-sm font-black transition",
+                        "flex min-h-24 min-w-0 flex-col items-center justify-center gap-2 rounded-md border px-2 py-3 text-center text-xs font-black leading-tight transition sm:text-sm",
                         selectedCategory === category
                           ? "border-forest-950 bg-forest-950 text-white"
                           : "border-black/10 bg-white text-forest-950 hover:border-forest-300"
                       )}
                     >
-                      <Icon size={23} strokeWidth={2.2} />
-                      {category}
+                      <Icon size={29} strokeWidth={2.15} />
+                      <span className="max-w-full break-words">{category}</span>
                     </button>
                   );
                 })}
@@ -613,8 +613,8 @@ export function BookingForm({
                 <VehicleInfoCard vehicle={customer.vehicleInfo} className="mt-5" />
               ) : (
                 <div className="mt-5 rounded-md border border-forest-100 bg-forest-50 p-4 text-sm leading-6 text-forest-800">
-                  Tips: skriv registreringsnummer i nästa steg så kan fordonstyp
-                  fyllas i automatiskt.
+                  Välj den fordonstyp som bäst motsvarar bilen. Du anger
+                  registreringsnumret i kontaktsteget.
                 </div>
               )}
             </StepShell>
