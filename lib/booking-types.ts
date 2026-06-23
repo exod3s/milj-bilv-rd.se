@@ -32,7 +32,7 @@ export const servicePackageIds = [
 export const vehicleTypeIds = ["sedan", "kombi", "suv", "7-sits"] as const;
 
 export const extraIds = ["dog-hair"] as const;
-export const loanCarIds = ["loan-car-1", "loan-car-2", "loan-car-3"] as const;
+export const loanCarIds = ["loan-car-1"] as const;
 
 export type ServicePackageId = string;
 export type VehicleTypeId = (typeof vehicleTypeIds)[number];

@@ -2,7 +2,8 @@ import type { AvailableSlot, BookingRecord } from "@/lib/booking-types";
 import { readBookings } from "@/lib/booking-store";
 import { getServiceDuration, getServicePackage } from "@/lib/pricing";
 
-const slotTimes = ["08:30", "10:30", "13:00", "15:00"];
+const weekdaySlotTimes = ["08:30", "10:30", "13:00", "15:00"];
+const saturdaySlotTimes = ["10:00", "12:00", "14:00", "16:00"];
 
 function formatSlotDate(date: Date) {
   return date.toISOString().slice(0, 10);
@@ -26,19 +27,20 @@ export async function getAvailableSlots(
     date.setDate(today.getDate() + offset);
 
     const day = date.getDay();
-    const isWeekend = day === 0 || day === 6;
-
-    if (isWeekend) {
+    if (day === 0) {
       continue;
     }
 
     const dateString = formatSlotDate(date);
+    const isSaturday = day === 6;
+    const slotTimes = isSaturday ? saturdaySlotTimes : weekdaySlotTimes;
+    const closingHour = isSaturday ? "17:00" : "18:00";
 
     slotTimes.forEach((time) => {
       const start = new Date(`${dateString}T${time}:00`);
       const end = new Date(start);
       end.setMinutes(end.getMinutes() + durationMinutes);
-      const closingTime = new Date(`${dateString}T18:00:00`);
+      const closingTime = new Date(`${dateString}T${closingHour}:00`);
       const overlapsBooking = bookings.some((booking) => {
         const bookingStart = new Date(
           `${booking.date}T${booking.time}:00`

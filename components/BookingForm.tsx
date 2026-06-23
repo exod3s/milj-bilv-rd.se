@@ -75,6 +75,45 @@ const extraIcons: Record<ExtraId, LucideIcon> = {
   "dog-hair": Dog
 };
 
+const calendarWeekdays = ["Mån", "Tis", "Ons", "Tor", "Fre", "Lör", "Sön"];
+
+function dateFromBookingValue(value: string) {
+  return new Date(`${value}T12:00:00`);
+}
+
+function monthFromBookingValue(value: string) {
+  return value.slice(0, 7);
+}
+
+function calendarMonthDate(month: string) {
+  const [year, monthNumber] = month.split("-").map(Number);
+  return new Date(year, monthNumber - 1, 1, 12);
+}
+
+function formatBookingDate(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function getCalendarDays(month: string) {
+  const firstDay = calendarMonthDate(month);
+  const mondayOffset = (firstDay.getDay() + 6) % 7;
+  const gridStart = new Date(firstDay);
+  gridStart.setDate(firstDay.getDate() - mondayOffset);
+
+  return Array.from({ length: 42 }, (_, index) => {
+    const date = new Date(gridStart);
+    date.setDate(gridStart.getDate() + index);
+    return {
+      date: formatBookingDate(date),
+      day: date.getDate(),
+      inCurrentMonth: date.getMonth() === firstDay.getMonth()
+    };
+  });
+}
+
 type BookingFormProps = {
   availableSlots: AvailableSlot[];
   initialServiceId?: ServicePackageId;
@@ -150,6 +189,11 @@ export function BookingForm({
   const [selectedBookingDate, setSelectedBookingDate] = useState(
     availableSlots[0]?.date ?? ""
   );
+  const [calendarMonth, setCalendarMonth] = useState(
+    availableSlots[0]?.date
+      ? monthFromBookingValue(availableSlots[0].date)
+      : monthFromBookingValue(formatBookingDate(new Date()))
+  );
   const [isLoadingSlots, setIsLoadingSlots] = useState(false);
   const [loanCarId, setLoanCarId] = useState<LoanCarId | "">("");
   const [loanCars, setLoanCars] = useState<LoanCarAvailability[]>([]);
@@ -169,6 +213,19 @@ export function BookingForm({
     () => [...new Set(bookingSlots.map((slot) => slot.date))],
     [bookingSlots]
   );
+  const availableDateSet = useMemo(
+    () => new Set(availableDates),
+    [availableDates]
+  );
+  const availableMonths = useMemo(
+    () => [...new Set(availableDates.map(monthFromBookingValue))],
+    [availableDates]
+  );
+  const calendarDays = useMemo(
+    () => getCalendarDays(calendarMonth),
+    [calendarMonth]
+  );
+  const currentMonthIndex = availableMonths.indexOf(calendarMonth);
   const visibleSlots = bookingSlots.filter(
     (slot) => slot.date === selectedBookingDate
   );
@@ -230,6 +287,9 @@ export function BookingForm({
         setSelectedSlotId("");
         setLoanCarId("");
         setSelectedBookingDate(result.slots[0]?.date ?? "");
+        if (result.slots[0]?.date) {
+          setCalendarMonth(monthFromBookingValue(result.slots[0].date));
+        }
       } catch (error) {
         if (error instanceof Error && error.name === "AbortError") {
           return;
@@ -514,7 +574,7 @@ export function BookingForm({
                       : "bg-slate-100 text-slate-500"
                 )}
               >
-                <Icon size={isHero ? 22 : 25} strokeWidth={2.2} />
+                <Icon size={isHero ? 29 : 32} strokeWidth={2.15} />
                 <span className="block max-w-full truncate">
                   {item.label}
                 </span>
@@ -547,13 +607,13 @@ export function BookingForm({
                       type="button"
                       onClick={() => setSelectedCategory(category)}
                       className={clsx(
-                        "inline-flex shrink-0 items-center gap-2 rounded-md border px-3 py-2 text-xs font-black transition",
+                        "inline-flex shrink-0 items-center gap-2.5 rounded-md border px-4 py-3 text-sm font-black transition",
                         selectedCategory === category
                           ? "border-forest-950 bg-forest-950 text-white"
                           : "border-black/10 bg-white text-forest-950 hover:border-forest-300"
                       )}
                     >
-                      <Icon size={15} />
+                      <Icon size={23} strokeWidth={2.2} />
                       {category}
                     </button>
                   );
@@ -813,33 +873,111 @@ export function BookingForm({
                 </p>
               ) : (
                 <>
-                  <div className="flex gap-2 overflow-x-auto pb-3">
-                    {availableDates.map((date) => (
+                  <div className="overflow-hidden rounded-2xl border border-black/10 bg-white shadow-sm">
+                    <div className="flex items-center justify-between border-b border-black/10 px-3 py-4 sm:px-5">
                       <button
-                        key={date}
                         type="button"
-                        onClick={() => {
-                          setSelectedBookingDate(date);
-                          setSelectedSlotId("");
-                          setLoanCarId("");
-                        }}
-                        className={clsx(
-                          "min-w-28 shrink-0 rounded-md border px-3 py-3 text-left transition",
-                          selectedBookingDate === date
-                            ? "border-forest-950 bg-forest-950 text-white"
-                            : "border-forest-100 bg-white text-forest-950 hover:border-forest-300"
-                        )}
+                        aria-label="Föregående månad"
+                        disabled={currentMonthIndex <= 0}
+                        onClick={() =>
+                          setCalendarMonth(availableMonths[currentMonthIndex - 1])
+                        }
+                        className="flex h-10 w-10 items-center justify-center rounded-full text-forest-950 transition hover:bg-forest-50 disabled:cursor-not-allowed disabled:opacity-25"
                       >
-                        <span className="block text-xs font-bold uppercase tracking-[0.1em] opacity-70">
-                          {new Intl.DateTimeFormat("sv-SE", {
-                            weekday: "short"
-                          }).format(new Date(`${date}T12:00:00`))}
-                        </span>
-                        <span className="mt-1 block font-black">{date}</span>
+                        <ChevronLeft size={24} />
                       </button>
-                    ))}
+                      <h3 className="text-lg font-black capitalize text-forest-950">
+                        {new Intl.DateTimeFormat("sv-SE", {
+                          month: "long",
+                          year: "numeric"
+                        }).format(calendarMonthDate(calendarMonth))}
+                      </h3>
+                      <button
+                        type="button"
+                        aria-label="Nästa månad"
+                        disabled={
+                          currentMonthIndex < 0 ||
+                          currentMonthIndex >= availableMonths.length - 1
+                        }
+                        onClick={() =>
+                          setCalendarMonth(availableMonths[currentMonthIndex + 1])
+                        }
+                        className="flex h-10 w-10 items-center justify-center rounded-full text-forest-950 transition hover:bg-forest-50 disabled:cursor-not-allowed disabled:opacity-25"
+                      >
+                        <ChevronRight size={24} />
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-7 border-b border-black/10 bg-slate-50">
+                      {calendarWeekdays.map((weekday) => (
+                        <div
+                          key={weekday}
+                          className="py-2.5 text-center text-[10px] font-black uppercase tracking-[0.08em] text-slate-500 sm:text-xs"
+                        >
+                          {weekday}
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="grid grid-cols-7">
+                      {calendarDays.map((calendarDay) => {
+                        const available = availableDateSet.has(calendarDay.date);
+                        const selected =
+                          selectedBookingDate === calendarDay.date;
+
+                        return (
+                          <button
+                            key={calendarDay.date}
+                            type="button"
+                            disabled={!available}
+                            aria-label={
+                              available
+                                ? `Välj ${calendarDay.date}`
+                                : `${calendarDay.date}, inga lediga tider`
+                            }
+                            onClick={() => {
+                              setSelectedBookingDate(calendarDay.date);
+                              setSelectedSlotId("");
+                              setLoanCarId("");
+                            }}
+                            className={clsx(
+                              "relative flex min-h-16 flex-col items-center justify-center border-b border-r border-black/5 py-2 transition sm:min-h-20",
+                              available
+                                ? "text-forest-950 hover:bg-forest-50"
+                                : "cursor-not-allowed text-slate-300",
+                              !calendarDay.inCurrentMonth && "bg-slate-50/60 opacity-55"
+                            )}
+                          >
+                            <span
+                              className={clsx(
+                                "flex h-9 w-9 items-center justify-center rounded-full text-sm font-black sm:h-10 sm:w-10 sm:text-base",
+                                selected && "bg-forest-950 text-white"
+                              )}
+                            >
+                              {calendarDay.day}
+                            </span>
+                            {available ? (
+                              <span
+                                className={clsx(
+                                  "mt-1 h-1.5 w-1.5 rounded-full",
+                                  selected ? "bg-forest-300" : "bg-forest-500"
+                                )}
+                              />
+                            ) : null}
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
 
+                  <p className="mb-3 mt-5 text-xs font-black uppercase tracking-[0.12em] text-slate-500">
+                    Lediga tider{" "}
+                    {new Intl.DateTimeFormat("sv-SE", {
+                      weekday: "long",
+                      day: "numeric",
+                      month: "long"
+                    }).format(dateFromBookingValue(selectedBookingDate))}
+                  </p>
                   <div className="grid gap-3 sm:grid-cols-2">
                     {visibleSlots.map((slot) => (
                       <button

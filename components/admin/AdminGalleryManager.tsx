@@ -13,14 +13,14 @@ async function uploadFile(file: File) {
     method: "POST",
     body: formData
   });
-  const result = (await response.json()) as {
+  const result = (await response.json().catch(() => null)) as {
     ok: boolean;
     url?: string;
     error?: string;
-  };
+  } | null;
 
-  if (!response.ok || !result.ok || !result.url) {
-    throw new Error(result.error ?? "Kunde inte ladda upp bilden");
+  if (!response.ok || !result?.ok || !result.url) {
+    throw new Error(result?.error ?? "Kunde inte ladda upp bilden");
   }
 
   return result.url;
@@ -179,6 +179,11 @@ export function AdminGalleryManager({
             accept="image/*"
             onChange={(event) => setBeforeFile(event.target.files?.[0] ?? null)}
           />
+          {beforeFile ? (
+            <span className="mt-2 block text-xs font-bold text-forest-700">
+              Vald: {beforeFile.name}
+            </span>
+          ) : null}
         </label>
         <label className="mt-4 block">
           <span className="field-label">Efter bild</span>
@@ -188,6 +193,11 @@ export function AdminGalleryManager({
             accept="image/*"
             onChange={(event) => setAfterFile(event.target.files?.[0] ?? null)}
           />
+          {afterFile ? (
+            <span className="mt-2 block text-xs font-bold text-forest-700">
+              Vald: {afterFile.name}
+            </span>
+          ) : null}
         </label>
         {message ? (
           <p className="mt-4 rounded-md border border-black/10 bg-white px-4 py-3 text-sm font-bold text-forest-800">

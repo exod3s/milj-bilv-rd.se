@@ -15,6 +15,7 @@ export const businessInfo = {
     "https://www.google.com/maps?q=Gamla%20Riksv%C3%A4gen%204G%2C%2089151%20%C3%96rnsk%C3%B6ldsvik&output=embed",
   openingHours: [
     { day: "Måndag–Fredag", hours: "08:00–18:00" },
-    { day: "Lördag–Söndag", hours: "Stängt" }
+    { day: "Lördag", hours: "10:00–17:00" },
+    { day: "Söndag", hours: "Stängt" }
   ]
 };
