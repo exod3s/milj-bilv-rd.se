@@ -16,7 +16,6 @@ import {
   Mail,
   MessageSquare,
   Phone,
-  Search,
   Sparkles,
   SprayCan,
   User,
@@ -130,16 +129,6 @@ type CustomerState = {
   message: string;
 };
 
-type VehicleLookupResponse =
-  | {
-      ok: true;
-      vehicle: VehicleRegistrationInfo;
-    }
-  | {
-      ok: false;
-      error: string;
-    };
-
 type BookingResponse =
   | {
       ok: true;
@@ -200,8 +189,6 @@ export function BookingForm({
   const [isLoadingLoanCars, setIsLoadingLoanCars] = useState(false);
   const [loanCarError, setLoanCarError] = useState("");
   const [formError, setFormError] = useState("");
-  const [vehicleLookupError, setVehicleLookupError] = useState("");
-  const [isLookingUpVehicle, setIsLookingUpVehicle] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [confirmation, setConfirmation] = useState<BookingResponse | null>(
     null
@@ -372,10 +359,6 @@ export function BookingForm({
       [field]: value,
       ...(field === "licensePlate" ? { vehicleInfo: undefined } : {})
     }));
-
-    if (field === "licensePlate") {
-      setVehicleLookupError("");
-    }
   }
 
   function toggleExtra(extraId: ExtraId) {
@@ -415,44 +398,6 @@ export function BookingForm({
     }
 
     return "";
-  }
-
-  async function lookupVehicle() {
-    const plate = customer.licensePlate.trim();
-
-    if (plate.length < 2) {
-      setVehicleLookupError("Skriv registreringsnummer först.");
-      return;
-    }
-
-    setIsLookingUpVehicle(true);
-    setVehicleLookupError("");
-
-    try {
-      const response = await fetch(
-        `/api/vehicle-lookup?plate=${encodeURIComponent(plate)}`
-      );
-      const result = (await response.json()) as VehicleLookupResponse;
-
-      if (!response.ok || !result.ok) {
-        throw new Error(result.ok ? "Kunde inte hämta fordonsinfo." : result.error);
-      }
-
-      setCustomer((current) => ({
-        ...current,
-        licensePlate: result.vehicle.licensePlate,
-        vehicleInfo: result.vehicle
-      }));
-      setVehicleTypeId(result.vehicle.suggestedVehicleTypeId);
-    } catch (lookupError) {
-      setVehicleLookupError(
-        lookupError instanceof Error
-          ? lookupError.message
-          : "Kunde inte hämta fordonsinfo just nu."
-      );
-    } finally {
-      setIsLookingUpVehicle(false);
-    }
   }
 
   function goNext() {
@@ -798,45 +743,24 @@ export function BookingForm({
                   </InputWithIcon>
                 </Field>
                 <Field label="Registreringsnummer">
-                  <div className="flex gap-2">
-                    <InputWithIcon icon={Car} className="min-w-0 flex-1">
-                      <input
-                        aria-label="Registreringsnummer"
-                        className="field-input uppercase pl-10"
-                        value={customer.licensePlate}
-                        onChange={(event) =>
-                          updateCustomer("licensePlate", event.target.value)
-                        }
-                        placeholder="ABC123"
-                        required
-                      />
-                    </InputWithIcon>
-                    <button
-                      type="button"
-                      onClick={lookupVehicle}
-                      disabled={isLookingUpVehicle}
-                      className="inline-flex h-[46px] shrink-0 items-center justify-center rounded-md bg-forest-950 px-4 text-sm font-black text-white transition hover:bg-forest-800 disabled:cursor-wait disabled:opacity-70"
-                    >
-                      {isLookingUpVehicle ? (
-                        <Loader2 size={18} className="animate-spin" />
-                      ) : (
-                        <Search size={18} />
-                      )}
-                      <span className="ml-2 hidden sm:inline">Hämta</span>
-                      <span className="sr-only">fordonsinfo</span>
-                    </button>
-                  </div>
+                  <InputWithIcon icon={Car}>
+                    <input
+                      aria-label="Registreringsnummer"
+                      className="field-input uppercase pl-10"
+                      value={customer.licensePlate}
+                      onChange={(event) =>
+                        updateCustomer("licensePlate", event.target.value)
+                      }
+                      placeholder="ABC123"
+                      required
+                    />
+                  </InputWithIcon>
                 </Field>
                 {customer.vehicleInfo ? (
                   <VehicleInfoCard
                     vehicle={customer.vehicleInfo}
                     className="sm:col-span-2"
                   />
-                ) : null}
-                {vehicleLookupError ? (
-                  <p className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800 sm:col-span-2">
-                    {vehicleLookupError}
-                  </p>
                 ) : null}
                 <Field label="Meddelande" className="sm:col-span-2">
                   <InputWithIcon icon={MessageSquare} alignTop>
