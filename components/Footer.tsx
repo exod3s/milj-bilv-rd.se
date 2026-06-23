@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Leaf, Mail, MapPin, Phone } from "lucide-react";
+import { Clock, Leaf, Mail, MapPin, Phone } from "lucide-react";
 import { BrandLogo } from "@/components/BrandLogo";
 import { businessInfo } from "@/lib/business-info";
 import { navItems } from "@/lib/site";
@@ -7,7 +7,7 @@ import { navItems } from "@/lib/site";
 export function Footer() {
   return (
     <footer className="bg-forest-950 text-white">
-      <div className="container-padded grid gap-10 py-12 md:grid-cols-[1.2fr_0.8fr_0.8fr]">
+      <div className="container-padded grid gap-10 py-12 md:grid-cols-2 lg:grid-cols-[1.2fr_0.7fr_0.8fr_0.8fr]">
         <div>
           <div className="flex items-center gap-3">
             <BrandLogo className="h-16 w-16" />
@@ -77,6 +77,23 @@ export function Footer() {
               <Mail size={16} className="mt-0.5 shrink-0" />
               {businessInfo.email}
             </a>
+          </div>
+        </div>
+
+        <div>
+          <p className="mb-4 text-sm font-black uppercase tracking-[0.16em] text-forest-300">
+            Öppettider
+          </p>
+          <div className="grid gap-3 text-sm text-forest-50">
+            {businessInfo.openingHours.map((row) => (
+              <div key={row.day} className="flex items-start gap-2">
+                <Clock size={16} className="mt-0.5 shrink-0 text-forest-300" />
+                <div>
+                  <p className="font-bold text-white">{row.day}</p>
+                  <p className="mt-0.5 text-forest-100">{row.hours}</p>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </div>
