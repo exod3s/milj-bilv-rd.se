@@ -2,7 +2,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { ensureDatabaseSchema, getSql, hasDatabase } from "@/lib/db";
 import type { ServicePackage } from "@/lib/pricing";
-import { servicePackages } from "@/lib/pricing";
+import { defaultVehicleAdjustments, servicePackages } from "@/lib/pricing";
 
 const servicesFile = path.join(process.cwd(), "data", "services.json");
 const removedServiceIds = new Set([
@@ -10,6 +10,21 @@ const removedServiceIds = new Set([
   "balansering",
   "dackomlaggning-balansering"
 ]);
+
+function normalizeService(service: ServicePackage): ServicePackage {
+  if (service.category !== "Biltvättspaket" || !service.vehicleAdjustments) {
+    return service;
+  }
+
+  return {
+    ...service,
+    vehicleAdjustments: {
+      ...service.vehicleAdjustments,
+      suv: defaultVehicleAdjustments.suv,
+      "7-sits": defaultVehicleAdjustments["7-sits"]
+    }
+  };
+}
 
 export async function readServices(): Promise<ServicePackage[]> {
   if (hasDatabase()) {
@@ -27,16 +42,18 @@ export async function readServices(): Promise<ServicePackage[]> {
     }
 
     return rows
-      .map((row) => row.data)
+      .map((row) => normalizeService(row.data))
       .filter((service) => !removedServiceIds.has(service.id));
   }
 
   try {
     const file = await readFile(servicesFile, "utf8");
     const services = JSON.parse(file) as ServicePackage[];
-    return services.filter((service) => !removedServiceIds.has(service.id));
+    return services
+      .map((service) => normalizeService(service))
+      .filter((service) => !removedServiceIds.has(service.id));
   } catch {
-    return [...servicePackages];
+    return servicePackages.map((service) => normalizeService(service));
   }
 }
 

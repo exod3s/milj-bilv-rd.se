@@ -45,8 +45,8 @@ export const defaultVehicleAdjustments: Record<VehicleTypeId, number> = {
 const biltvattVehicleAdjustments: Record<VehicleTypeId, number> = {
   sedan: 0,
   kombi: 0,
-  suv: 250,
-  "7-sits": 400
+  suv: 200,
+  "7-sits": 300
 };
 
 export const serviceFallbackImages: Record<string, string> = {
